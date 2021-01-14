@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "Love Bot": {
+      "commandName": "Project",
+      "commandLineArgs": "\"C:/Test/amazon_config.json\" \"C:/Test/cred.json\" ",
+      "remoteDebugEnabled": false
+    }
+  }
+}
