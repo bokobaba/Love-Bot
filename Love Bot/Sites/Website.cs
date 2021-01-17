@@ -216,8 +216,12 @@ namespace Love_Bot.Sites {
 
             options.Proxy = null;
 
-            Console.WriteLine(AppDomain.CurrentDomain.BaseDirectory);
-            ChromeDriver driver = new ChromeDriver(AppDomain.CurrentDomain.BaseDirectory, options);
+            string loc = System.IO.Directory.GetCurrentDirectory();
+            //loc = loc.Substring(0, loc.LastIndexOf(@"\") + 1);
+            Console.WriteLine("current directory = " + loc);
+            //Console.ReadLine();
+
+            ChromeDriver driver = new ChromeDriver(loc, options);
             
 
             return driver;
