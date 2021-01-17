@@ -84,19 +84,19 @@ namespace Love_Bot.Sites {
             Product product = new Product();
             product.link = url;
 
-            IWebElement elem = FindElementTimeout(5, x => driver.FindElementByXPath(x), itemNameXpath);
+            IWebElement elem = FindElementTimeout(3, x => driver.FindElementByXPath(x), itemNameXpath);
             if (elem != null) {
                 product.name = elem.GetAttribute("innerText").Trim();
             }
 
-            elem = FindElementTimeout(5, x => driver.FindElementByXPath(x), itemPriceXpath);
+            elem = FindElementTimeout(1, x => driver.FindElementByXPath(x), itemPriceXpath);
             if (elem != null) {
                 //Console.WriteLine("price = [" + elem.GetAttribute("innerText") +  "]");
                 float number;
                 product.price = float.TryParse(elem.GetAttribute("innerText"), style, culture, out number) ? number : float.MaxValue;
             }
 
-            elem = FindElementTimeout(5, x => driver.FindElementByXPath(x), itemButtonXpath);
+            elem = FindElementTimeout(1, x => driver.FindElementByXPath(x), itemButtonXpath);
             if (elem != null) {
                 product.button = elem.Text.ToLower();
                 AddToCartButton = elem;

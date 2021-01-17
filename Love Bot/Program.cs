@@ -55,7 +55,7 @@ namespace Love_Bot {
 
         private static void CreateBotThread(string name, Website site) {
             Console.WriteLine("creating bot: " + name);
-            Thread thread = new Thread(() => site.Run());
+            Thread thread = new Thread(async () => await site.Run());
             thread.Name = name;
             threads.Add(name, new Tuple<Thread, Website>(thread, site));
             thread.Start();
@@ -107,7 +107,13 @@ namespace Love_Bot {
         private static Website GetWebsite(string name, WebsiteConfig config) {
             if (config.urls.Length < 1)
                 return null;
-            string site = new Uri(config.urls[0]).Host;
+            string site;
+            try {
+                site = new Uri(config.urls[0]).Host;
+            } catch (Exception ex) {
+                Console.WriteLine(ex.Message);
+                return null;
+            }
             for (int i = 0; i < config.urls.Length; ++i) {
                 if (!site.Equals(new Uri(config.urls[i]).Host)) {
                     Console.WriteLine(name + ": all urls must use same domain");
@@ -147,7 +153,7 @@ namespace Love_Bot {
 
             //    Console.WriteLine(c.Key + "\n" + c.Value);
             //}
-            //File.Delete(path);
+            File.Delete(path);
             return configs;
         }
 
@@ -165,7 +171,7 @@ namespace Love_Bot {
             //}
 
             //payment["billingInfo"].Select(i => $"{i.Key}: {i.Value}").ToList().ForEach(Console.WriteLine);
-            //File.Delete(path);
+            File.Delete(path);
             return payment;
         }
 

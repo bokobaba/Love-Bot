@@ -85,10 +85,9 @@ namespace Love_Bot.Sites {
 
             //return true;
         }
-
+        
         protected override bool Checkout() {
             Console.WriteLine("checkout");
-            Console.ReadLine();
             if (buyNow) {
                 IReadOnlyCollection<IWebElement> popover = driver.FindElements(By.Id("a-popover-lgtbox"));
                 if (popover.Count > 0) {
@@ -100,29 +99,30 @@ namespace Love_Bot.Sites {
                     IWebElement e = FindElementTimeout(5, x => driver.FindElement(By.Id(x)),
                         "turbo-checkout-pyo-button");
                     if (e is null) return false;
-        
+
                     if (config.placeOrder)
                         e.Click();
                     else
                         Console.WriteLine(e.GetAttribute("value"));
                     return true;
-                } else
+                }
+                else
                     return false;
             }
 
             driver.Navigate().GoToUrl(checkouturl);
-            
+
             IWebElement elem = FindElementTimeout(20, x => driver.FindElementByTagName(x), "fieldset");
-            if (elem is null) return false;
-            IReadOnlyCollection<IWebElement> radios = elem.FindElements(By.TagName("div"));
-            Console.WriteLine("num radios = " + radios.Count);
-            for (int i = 1; i < radios.Count; ++i) {
-                IWebElement e = radios.ElementAt(i).FindElement(By.CssSelector("span[class='a-color-secondary']"));
-                if (elem is null) continue;
-                Console.WriteLine(e.Text);
-                if (e.Text.Contains("FREE") && !e.Text.Contains("trial")) {
-                    radios.ElementAt(i).Click();
-                    break;
+            if (elem != null) {
+                IReadOnlyCollection<IWebElement> radios = elem.FindElements(By.TagName("div"));
+                for (int i = 1; i < radios.Count; ++i) {
+                    IWebElement e = radios.ElementAt(i).FindElement(By.CssSelector("span[class='a-color-secondary']"));
+                    if (elem is null) continue;
+                    Console.WriteLine(e.Text);
+                    if (e.Text.Contains("FREE") && !e.Text.Contains("trial")) {
+                        radios.ElementAt(i).Click();
+                        break;
+                    }
                 }
             }
 
@@ -151,7 +151,8 @@ namespace Love_Bot.Sites {
                 IWebElement signoutButton = FindElementTimeout(10, x => driver.FindElementById(x), "nav-item-signout");
                 if (TryInvokeElement(10, () => { signoutButton.Click(); }) != Exceptions.None)
                     return false;
-            } else {
+            }
+            else {
                 Console.WriteLine(name + ": trying to sign in to amazon");
                 if (TryInvokeElement(10, () => { elem.Click(); }) != Exceptions.None)
                     return false;
@@ -195,7 +196,6 @@ namespace Love_Bot.Sites {
             elem.SendKeys(Keys.Enter);
 
             Console.WriteLine("Login Successful");
-            Console.ReadLine();
 
             return true;
         }
@@ -236,7 +236,8 @@ namespace Love_Bot.Sites {
                     product.button = node.Attributes["value"] == null ? "null" : node.Attributes["value"].Value;
                     //product.button = node.InnerText == null ? "null" : node.InnerText;
                 }
-            } else {
+            }
+            else {
                 //Console.WriteLine(node.InnerText);
                 product.button = "Buy Now";
                 buyNow = true;
@@ -255,25 +256,26 @@ namespace Love_Bot.Sites {
             Product product = new Product();
             product.link = url;
 
-            IWebElement elem = FindElementTimeout(5, x => driver.FindElementById(x), itemNameId);
+            IWebElement elem = FindElementTimeout(3, x => driver.FindElementById(x), itemNameId);
             if (elem != null) {
                 product.name = elem.GetAttribute("innerText").Trim();
             }
 
-            elem = FindElementTimeout(5, x => driver.FindElementById(x), itemPriceId);
+            elem = FindElementTimeout(1, x => driver.FindElementById(x), itemPriceId);
             if (elem != null) {
                 //Console.WriteLine("price = [" + elem.GetAttribute("innerText") +  "]");
                 float number;
                 product.price = float.TryParse(elem.GetAttribute("innerText"), style, culture, out number) ? number : float.MaxValue;
             }
 
-            if ((elem = FindElementTimeout(5, x => driver.FindElementById(x), buyNowId)) == null) {
-                elem = FindElementTimeout(5, x => driver.FindElementById(x), itemButtonId);
+            if ((elem = FindElementTimeout(1, x => driver.FindElementById(x), buyNowId)) == null) {
+                elem = FindElementTimeout(1, x => driver.FindElementById(x), itemButtonId);
                 if (elem != null) {
                     product.button = elem.Text.ToLower();
                     AddToCartButton = elem;
                 }
-            } else {
+            }
+            else {
                 product.button = elem.Text.ToLower();
                 AddToCartButton = elem;
                 buyNow = true;

@@ -63,9 +63,9 @@ namespace Love_Bot.Sites {
 
         public class Product {
 
-            public string name { get; set; } = "";
+            public string name { get; set; } = "not found";
             public float price { get; set; } = Single.NaN;
-            public string button { get; set; } = "";
+            public string button { get; set; } = "not found";
             public string link { get; set; }
 
             public override string ToString() {
@@ -106,29 +106,39 @@ namespace Love_Bot.Sites {
 
         private async Task startTasks() {
             List<Task> tasks = new List<Task>();
-            Task searchTask = Task.Run(async () => { await Task.Delay(TimeSpan.FromSeconds(config.delay)); });
-            Task loginTask = Task.Run(async() => { await Task.Delay(TimeSpan.FromSeconds(config.loginInterval)); });
+            //Task searchTask = Task.Run(async () => { 
+            //    await Task.Delay(TimeSpan.FromSeconds(config.delay)); 
+            //});
+            //Task loginTask = Task.Run(async () => { await Task.Delay(TimeSpan.FromSeconds(config.loginInterval)); });
+            Task searchTask = Search();
+            Task loginTask = StayLoggedIn();
             (int, int) ids = (searchTask.Id, loginTask.Id);
             tasks.Add(searchTask);
             tasks.Add(loginTask);
 
-            while (!abort) {
-                Task finished = await Task.WhenAny(tasks);
-                tasks.Remove(finished);
-                if (finished.Id == ids.Item1) {
-                    while (searching || loggingin) {}
-                    Search();
-                    Task task = Task.Run(async () => { await Task.Delay(TimeSpan.FromSeconds(config.delay)); });
-                    ids.Item1 = task.Id;
-                    tasks.Add(task);
-                } else if (finished.Id == ids.Item2) {
-                    while (loggingin || searching) {}
-                    StayLoggedIn();
-                    Task task = Task.Run(async () => { await Task.Delay(TimeSpan.FromSeconds(config.loginInterval)); });
-                    ids.Item2 = task.Id;
-                    tasks.Add(task);
-                }
-            }
+            await searchTask;
+            await loginTask;
+
+            //while (!abort) {
+            //    Task finished = await Task.WhenAny(tasks);
+            //    tasks.Remove(finished);
+            //    if (finished.Id == ids.Item1) {
+            //        Task task = Search();
+            //        //while (searching || loggingin) { }
+            //        //Search();
+            //        //Task task = Task.Run(async () => { await Task.Delay(TimeSpan.FromSeconds(config.delay)); });
+            //        ids.Item1 = task.Id;
+            //        tasks.Add(task);
+            //    }
+            //    else if (finished.Id == ids.Item2) {
+            //        Task task = StayLoggedIn();
+            //        //while (loggingin || searching) { }
+            //        //StayLoggedIn();
+            //        //Task task = Task.Run(async () => { await Task.Delay(TimeSpan.FromSeconds(config.loginInterval)); });
+            //        ids.Item2 = task.Id;
+            //        tasks.Add(task);
+            //    }
+            //}
 
             End();
         }
@@ -138,37 +148,48 @@ namespace Love_Bot.Sites {
             abort = true;
         }
 
-        private void Search() {
-            if (abort) return;
+        private async Task Search() {
+            //if (abort) return;
+            while (!abort) {
+                //Console.WriteLine("starting search: " + DateTime.Now);
+                await Task.Delay(TimeSpan.FromSeconds(config.delay));
+                //Console.WriteLine("ending search: " + DateTime.Now);
+                while (searching || loggingin) { }
+                searching = true;
+                foreach (string url in config.urls) {
+                    if (abort) break;
+                    Product product = driver is null ? ParseNoBrowser(url) : ParseBrowser(url);
+                    if (VerifyProduct(product)) {
+                        PurchaseItem(product);
+                        if (purchases < config.maxPurchases) {
+                            Console.WriteLine(name + ": restarting browser");
+                            driver.Dispose();
+                            driver = InitDriver();
+                        }
+                    }
 
-            searching = true;
-            foreach (string url in config.urls) {
-                if (abort) break;
-                Product product = driver is null ? ParseNoBrowser(url) : ParseBrowser(url);
-                if (VerifyProduct(product)) {
-                    PurchaseItem(product);
-                    if (purchases < config.maxPurchases) {
-                        Console.WriteLine(name + ": restarting browser");
-                        driver.Dispose();
-                        driver = InitDriver();
+                    if (config.maxPurchases > 0 && purchases >= config.maxPurchases) {
+                        abort = true;
                     }
                 }
-
-                if (config.maxPurchases > 0 && purchases >= config.maxPurchases) {
-                    abort = true;
-                }
+                searching = false;
             }
-            searching = false;
         }
 
-        private void StayLoggedIn() {
-            if (abort) return;
-
-            loggingin = true;
-            if (driver != null && config.stayLoggedIn) {
-                Login(config.login[0], config.login[1]);
+        private async Task StayLoggedIn() {
+            //if (abort) return;
+            while (!abort) {
+                //Console.WriteLine("starting login: " + DateTime.Now);
+                await Task.Delay(TimeSpan.FromSeconds(config.loginInterval));
+                //Console.WriteLine("ending login: " + DateTime.Now);
+                while (searching || loggingin) { }
+                if (abort) break;
+                loggingin = true;
+                if (driver != null && config.stayLoggedIn) {
+                    Login(config.login[0], config.login[1]);
+                }
+                loggingin = false;
             }
-            loggingin = false;
         }
 
         private ChromeDriver InitDriver() {
@@ -205,14 +226,14 @@ namespace Love_Bot.Sites {
         protected bool VerifyProduct(Product product) {
             Console.WriteLine(name + ": verifying: " + product);
             if (!AddToCartText.Contains(product.button)) {
-                Console.WriteLine(name + ": failed");
+                Console.WriteLine(name + ": purchase button not found");
                 return false;
             }
             if (config.maxPrice > 0 && (product.price > config.maxPrice || float.IsNaN(product.price))) {
-                Console.WriteLine(name + ": failed");
+                Console.WriteLine(name + ": price match failed");
                 return false;
             }
-            Console.WriteLine(name + ": success");
+            Console.WriteLine(name + ": product match");
             return true;
         }
 
