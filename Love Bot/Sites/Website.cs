@@ -116,13 +116,13 @@ namespace Love_Bot.Sites {
                 Task finished = await Task.WhenAny(tasks);
                 tasks.Remove(finished);
                 if (finished.Id == ids.Item1) {
-                    while (searching) { }
+                    while (searching || loggingin) {}
                     Search();
                     Task task = Task.Run(async () => { await Task.Delay(TimeSpan.FromSeconds(config.delay)); });
                     ids.Item1 = task.Id;
                     tasks.Add(task);
                 } else if (finished.Id == ids.Item2) {
-                    while (loggingin) { }
+                    while (loggingin || searching) {}
                     StayLoggedIn();
                     Task task = Task.Run(async () => { await Task.Delay(TimeSpan.FromSeconds(config.loginInterval)); });
                     ids.Item2 = task.Id;
@@ -147,9 +147,11 @@ namespace Love_Bot.Sites {
                 Product product = driver is null ? ParseNoBrowser(url) : ParseBrowser(url);
                 if (VerifyProduct(product)) {
                     PurchaseItem(product);
-                    Console.WriteLine(name + ": restarting browser");
-                    driver.Dispose();
-                    driver = InitDriver();
+                    if (purchases < config.maxPurchases) {
+                        Console.WriteLine(name + ": restarting browser");
+                        driver.Dispose();
+                        driver = InitDriver();
+                    }
                 }
 
                 if (config.maxPurchases > 0 && purchases >= config.maxPurchases) {
@@ -170,6 +172,7 @@ namespace Love_Bot.Sites {
         }
 
         private ChromeDriver InitDriver() {
+            Console.WriteLine(name + ": starting browser");
             ChromeOptions options = new ChromeOptions();
             options.AddArgument("--ignore-certificate-errors");
             options.AddArgument("--ignore-certificate-errors-spki-list");
@@ -192,6 +195,7 @@ namespace Love_Bot.Sites {
 
             options.Proxy = null;
 
+            Console.WriteLine(AppDomain.CurrentDomain.BaseDirectory);
             ChromeDriver driver = new ChromeDriver(AppDomain.CurrentDomain.BaseDirectory, options);
             
 

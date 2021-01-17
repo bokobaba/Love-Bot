@@ -15,7 +15,7 @@ namespace Love_Bot {
         public bool stayLoggedIn { get; set; } = false;
         public int loginInterval { get; set; } = 600;
         public float maxPrice { get; set; } = 0;
-        public float maxPurchases { get; set; } = 0;
+        public int maxPurchases { get; set; } = 0;
         public string[] urls { get; set; } = new string[] { "www.example.com/product_url", "www.example.com/product2_url" };
 
         public override string ToString() {

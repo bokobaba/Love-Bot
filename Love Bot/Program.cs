@@ -66,7 +66,7 @@ namespace Love_Bot {
                 Thread.Sleep(delay * 1000);
 
                 if (!File.Exists(path)) continue;
-                
+
                 Console.WriteLine("checking config file");
                 Dictionary<string, WebsiteConfig> newConfigs = LoadConfig(path);
 
@@ -93,7 +93,8 @@ namespace Love_Bot {
                         Website w = threads[config.Key].Item2;
                         w.config.Update(config.Value);
                         Console.WriteLine("done");
-                    } else {
+                    }
+                    else {
                         Website site = GetWebsite(config.Key, config.Value);
                         if (site is null)
                             continue;
@@ -115,11 +116,14 @@ namespace Love_Bot {
             }
             if (site.ToLower().Equals("www.walmart.com")) {
                 return new Walmart(name, config, payment);
-            } else if (site.ToLower().Equals("www.amazon.com")) {
+            }
+            else if (site.ToLower().Equals("www.amazon.com")) {
                 return new Amazon(name, config, payment);
-            } else if (site.ToLower().Equals("www.gamestop.com")) {
+            }
+            else if (site.ToLower().Equals("www.gamestop.com")) {
                 return new Gamestop(name, config, payment);
-            } else {
+            }
+            else {
                 Console.WriteLine(site + " is not supported");
                 return null;
             }
@@ -129,7 +133,8 @@ namespace Love_Bot {
             Dictionary<string, WebsiteConfig> configs;
             try {
                 configs = JsonConvert.DeserializeObject<Dictionary<string, WebsiteConfig>>(File.ReadAllText(path));
-            } catch (Exception ex) {
+            }
+            catch (Exception ex) {
                 Console.WriteLine(ex.Message);
                 return null;
             }
@@ -150,7 +155,8 @@ namespace Love_Bot {
             Dictionary<string, Dictionary<string, string>> payment;
             try {
                 payment = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, string>>>(File.ReadAllText(path));
-            } catch (Exception ex) {
+            }
+            catch (Exception ex) {
                 Console.WriteLine(ex.Message);
                 return null;
             }
@@ -165,13 +171,20 @@ namespace Love_Bot {
 
         private static void CreateTemplate(string configPath, string paymentPath) {
             Console.WriteLine("generating templates for " + configPath + " and " + paymentPath);
-            File.WriteAllText(configPath, JsonConvert.SerializeObject(
-                new Dictionary<string, WebsiteConfig>() { 
+            try {
+                File.WriteAllText(configPath, JsonConvert.SerializeObject(
+                    new Dictionary<string, WebsiteConfig>() {
                     { "botName", new WebsiteConfig() },
                     { "botName2", new WebsiteConfig() }}, Formatting.Indented));
+            }
+            catch (Exception ex) {
+                Console.WriteLine(ex.Message);
+                return;
+            }
 
-            File.WriteAllText(paymentPath, JsonConvert.SerializeObject(
-                new Dictionary<string, Dictionary<string, string>>() {
+            try {
+                File.WriteAllText(paymentPath, JsonConvert.SerializeObject(
+                    new Dictionary<string, Dictionary<string, string>>() {
                     {
                         "billingInfo",
                         new Dictionary<string, string>() {
@@ -207,6 +220,11 @@ namespace Love_Bot {
                     }
 
                 }}, Formatting.Indented));
+            }
+            catch (Exception ex) {
+                Console.WriteLine(ex.Message);
+                return;
+            }
         }
     }
 }
