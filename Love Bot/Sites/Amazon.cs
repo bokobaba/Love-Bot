@@ -29,7 +29,7 @@ namespace Love_Bot.Sites {
 
         protected override string AddToCartText {
             get {
-                return "Add to Cart, Buy Now";
+                return "add to cart, buy now";
             }
         }
 
@@ -265,7 +265,7 @@ namespace Love_Bot.Sites {
             if (elem != null) {
                 //Console.WriteLine("price = [" + elem.GetAttribute("innerText") +  "]");
                 float number;
-                product.price = float.TryParse(elem.GetAttribute("innerText"), style, culture, out number) ? number : float.MaxValue;
+                product.price = float.TryParse(elem.GetAttribute("innerText"), style, culture, out number) ? number : Single.NaN;
             }
 
             if ((elem = FindElementTimeout(1, x => driver.FindElementById(x), buyNowId)) == null) {

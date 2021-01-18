@@ -28,6 +28,7 @@ namespace Love_Bot.Sites {
 
         protected override Product ParseNoBrowser(string url) {
             Console.WriteLine(name + ": checking walmart");
+            AddToCartButton = null;
             string html = WebsiteUtils.GetHtmlContent(url);
             HtmlDocument doc = new HtmlDocument();
             doc.LoadHtml(html);
@@ -45,9 +46,6 @@ namespace Love_Bot.Sites {
             if (node != null) {
                 //Console.WriteLine("\n name:\n" + node.InnerText);
                 product.name = node.InnerText == null ? "null" : node.InnerText;
-            } else {
-                //Console.WriteLine("\n name:\not found");
-                product.name = "not found";
             }
             
             node = doc.DocumentNode.SelectSingleNode(itemPriceXpath);
@@ -57,9 +55,6 @@ namespace Love_Bot.Sites {
                 CultureInfo culture = CultureInfo.CreateSpecificCulture("en-US");
                 float number;
                 product.price = float.TryParse(node.InnerText, style, culture, out number) ? number : float.MaxValue;
-            } else {
-                //Console.WriteLine("\nprice:\nnot found");
-                product.price = float.MaxValue;
             }
             
             node = doc.DocumentNode.SelectSingleNode(itemButtonXpath);
@@ -68,9 +63,6 @@ namespace Love_Bot.Sites {
                 //Console.WriteLine("\n button:\n" + node.Attributes["value"].Value);
                 //product.button = node.Attributes["value"] == null ? "null" : node.Attributes["value"].Value;
                 product.button = node.InnerText == null ? "null" : node.InnerText;
-            } else {
-                //Console.WriteLine("\n button: not found\n");
-                product.button = "not found";
             }
 
             product.link = url;
@@ -80,6 +72,7 @@ namespace Love_Bot.Sites {
 
         protected override Product ParseBrowser(string url) {
             Console.WriteLine(name + ": checking walmart");
+            AddToCartButton = null;
             driver.Navigate().GoToUrl(url);
             Product product = new Product();
             product.link = url;
@@ -137,7 +130,7 @@ namespace Love_Bot.Sites {
 
         protected override bool Checkout() {
 
-            Console.WriteLine(name + ": proceding to cart");
+            Console.WriteLine(name + ": checkout Walmart");
 
             driver.Navigate().GoToUrl(cartUrl);
 

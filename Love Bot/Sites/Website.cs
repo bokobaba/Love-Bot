@@ -139,7 +139,7 @@ namespace Love_Bot.Sites {
             //        tasks.Add(task);
             //    }
             //}
-
+            Console.WriteLine("end");
             End();
         }
 
@@ -154,7 +154,7 @@ namespace Love_Bot.Sites {
                 //Console.WriteLine("starting search: " + DateTime.Now);
                 await Task.Delay(TimeSpan.FromSeconds(config.delay));
                 //Console.WriteLine("ending search: " + DateTime.Now);
-                while (searching || loggingin) { }
+                while ((searching || loggingin) && !abort) { }
                 searching = true;
                 foreach (string url in config.urls) {
                     if (abort) break;
@@ -182,7 +182,7 @@ namespace Love_Bot.Sites {
                 //Console.WriteLine("starting login: " + DateTime.Now);
                 await Task.Delay(TimeSpan.FromSeconds(config.loginInterval));
                 //Console.WriteLine("ending login: " + DateTime.Now);
-                while (searching || loggingin) { }
+                while ((searching || loggingin) && !abort) { }
                 if (abort) break;
                 loggingin = true;
                 if (driver != null && config.stayLoggedIn) {

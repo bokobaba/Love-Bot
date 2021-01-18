@@ -14,162 +14,97 @@ namespace Love_Bot.Sites {
             cartUrl = "https://www.bestbuy.com/cart",
             checkoutUrl = "https://www.bestbuy.com/checkout/r/fufillment",
             loginUrl = "https://www.bestbuy.com/identity/global/signin",
-            itemNameXpath = "//div[@class='sku-title']/hl/text()",
-            itemPriceXpath = "//div[@class='priceView-hero-price priceView-customer-price']/text()",
-            itemButtonXpath = "//input[@class='btn btn-primary btn-lg btn-block btn-leading-ficon add-to-cart-button']/text()";
+            itemNameXpath = "//div[@class='sku-title']/h1",
+            itemPriceXpath = "//div[@class='priceView-hero-price priceView-customer-price']/span",
+            itemButtonXpath = "//button[@class='btn btn-primary btn-lg btn-block btn-leading-ficon add-to-cart-button']";
 
         public BestBuy(string name, WebsiteConfig config, Dictionary<string, Dictionary<string, string>> cred)
-            : base(name, config, cred) { }
+            : base(name, config, cred) {
+            config.loadBrowserOnStart = true;
+        }
 
-        internal override string AddToCartButton {
+        protected override string AddToCartText {
             get {
-                return "Add to cart";
+                return "add to cart";
             }
         }
 
-        protected override async Task<Product> ParseAsync(string url) {
-            HtmlDocument doc = new HtmlWeb().Load(url);
-
-            //string html = WebsiteUtils.GetHtmlContent(url);
-
-            //HtmlDocument doc = new HtmlDocument();
-            //doc.LoadHtml(html);
-
-            //StreamWriter file = new StreamWriter("test.txt");
-            //if (doc.DocumentNode != null)
-            //    foreach (var n in doc.DocumentNode.ChildNodes)
-            //        WebsiteUtils.WriteNode(file, n, 0);
-
-            Product product = new Product();
-
-            HtmlNode node = doc.DocumentNode.SelectSingleNode(itemNameXpath);
-
-            if (node != null) {
-                Console.WriteLine("\n name:\n" + node.InnerText);
-                product.name = node.InnerText == null ? "null" : node.InnerText;
-            }
-            else {
-                Console.WriteLine("\n name:\nnot found");
-                product.name = "not found";
-            }
-
-            node = doc.DocumentNode.SelectSingleNode(itemPriceXpath);
-            if (node != null) {
-                Console.WriteLine("\n price:\n" + node.InnerText);
-                NumberStyles style = NumberStyles.Number | NumberStyles.AllowCurrencySymbol;
-                CultureInfo culture = CultureInfo.CreateSpecificCulture("en-US");
-                float number;
-                product.price = float.TryParse(node.InnerText, style, culture, out number) ? number : float.MaxValue;
-            }
-            else {
-                Console.WriteLine("\nprice:\nnot found");
-                product.price = float.MaxValue;
-            }
-
-            node = doc.DocumentNode.SelectSingleNode(itemButtonXpath);
-            if (node != null) {
-                Console.WriteLine("\nbutton:\n" + node.Attributes["value"].Value);
-                product.button = node.Attributes["value"] == null ? "null" : node.Attributes["value"].Value;
-            }
-            else {
-                Console.WriteLine("\nbutton: not found\n");
-                product.button = "not found";
-            }
-
-            product.link = url;
-
-            return product;
+        public override void UpdateConfigs(WebsiteConfig newConfig) {
+            base.UpdateConfigs(newConfig);
+            config.loadBrowserOnStart = true;
         }
 
-        protected override async void AddToCart(ChromeDriver driver, string url) {
-            return;
-            Console.WriteLine("adding product to walmart cart");
-            Console.WriteLine(url);
-            Task.Delay(3000).Wait();
-            driver.Navigate().GoToUrl(url);
+        protected override bool AddToCart(string url, bool refresh = false) {
+            Console.WriteLine(name + ": adding product to Bestbuy cart");
+
+            if (refresh)
+                driver.Navigate().GoToUrl(url);
             //Console.ReadLine();
+            if (AddToCartButton is null) {
+                AddToCartButton = FindElementTimeout(5, x => driver.FindElementByXPath(x), itemButtonXpath);
+            }
+            TryInvokeElement(5, () => { AddToCartButton.Click(); });
 
-            IWebElement bttn = FindElementTimeout(5, x => driver.FindElementByXPath(x),
-                "//button[@class='button spin-button prod-ProductCTA--primary button--primary']");
-            bttn.Click();
+            FindElementTimeout(5, x => driver.FindElementByXPath(x), "div[@class='cart-subtotal'");
+
+            return true;
         }
 
-        protected override async void Checkout(ChromeDriver driver) {
-            return;
-            Task.Delay(2000).Wait();
-
-            Console.WriteLine("proceding to cart");
+        protected override bool Checkout() {
+            Console.WriteLine(name + ": checkout Bestbuy");
 
             driver.Navigate().GoToUrl(cartUrl);
 
-            new WebDriverWait(driver, TimeSpan.FromSeconds(10)).Until(ExpectedConditions.ElementToBeClickable((
-                By.XPath("//button[@class='button cxo-continue-btn button--primary']"))));
-            IWebElement bttn = FindElementTimeout(5, x => driver.FindElementByXPath(x),
-                "//button[@class='button cxo-continue-btn button--primary']");
-            bttn.Click();
+            Console.WriteLine(name + ": searching for shipping radio");
+            IWebElement elem = FindElementTimeout(5, x => driver.FindElementByXPath(x), "//input[contains(@id, 'shipping')]");
+            if (elem is null) return false;
+            elem.Click();
 
-            new WebDriverWait(driver, TimeSpan.FromSeconds(10)).Until(ExpectedConditions.ElementToBeClickable((
-                By.XPath("//button[@class='button button--primary']"))));
-            bttn = FindElementTimeout(5, x => driver.FindElementByXPath(x),
-                "//button[@class='button button--primary']");
-            bttn.Click();
+            Console.WriteLine(name + ": searching for checkout button");
+            elem = FindElementTimeout(5, x => driver.FindElementByXPath(x),
+                "//button[@class='btn btn-lg btn-block btn-primary']");
+            if (elem is null) return false;
+            elem.Click();
+            WaitUntilStale(5, elem, () => { bool b = elem.Displayed || elem.Enabled; });
 
-            //bttn = FindElementTimeout(5, x => driver.FindElementByXPath(x),
-            //    "//span[contains(text(), 'Review your order')]");
-            //bttn.Click();
+            Console.WriteLine(name + ": searcing for place order button");
+            elem = FindElementTimeout(5, x => driver.FindElementByXPath(x), 
+                "//button[@class='btn btn-lg btn-block btn-primary button__fast-track']");
+            if (elem is null) return false;
+            if (config.placeOrder) {
+                if (TryInvokeElement(5, () => {
+                    new OpenQA.Selenium.Interactions.Actions(driver).MoveToElement(elem).Click(elem).Perform();
+                }) != Exceptions.None) return false;
 
-            bttn = FindElementTimeout(5, x => driver.FindElementById(x),
-                "cvv-confirm");
-            bttn.SendKeys(Keys.Control + "a");
-            bttn.SendKeys("488");
-
-
-            bttn = FindElementTimeout(5, x => driver.FindElementByXPath(x),
-                "//button[@data-automation-id='submit-payment-cc']");
-            bttn.Click();
-
-            bttn = FindElementTimeout(5, x => driver.FindElementByXPath(x),
-                "//button[@data-automation-id='summary-place-holder']");
-            bttn.Click();
-
-            Console.WriteLine("bttn text: " + bttn.Text);
-            Console.WriteLine("success");
+            }
+            else
+                Console.WriteLine(elem.GetAttribute("innerText"));
 
 
-            //# radio = find_element_timeout(5, lambda: driver.find_element(
-            //# By.CSS_SELECTOR, "[id^=fulfillment-shipping]"))
-            //# radio.click()
-            //# bttn = find_element_timeout(5, lambda: driver.find_element(
-            //# By.XPATH, '//button[text()="Check out"]'))
-            //# bttn.click()
+            return true;
         }
 
-        protected override async void Login(ChromeDriver driver, string email, string password) {
-            Console.WriteLine("login to walmart");
-            Task.Delay(2000).Wait();
-            Console.WriteLine("going to login url");
+        protected override bool Login(string email, string password) {
+            Console.WriteLine(name + ": login to Bestbuy");
+            //Task.Delay(2000).Wait();
             driver.Navigate().GoToUrl(loginUrl);
 
             Task.Delay(1000).Wait();
 
-            Console.WriteLine("finding email field");
+            Console.WriteLine(name + ": finding email field");
 
-            IWebElement elem = FindElementTimeout(5, x => driver.FindElementById(x), "email");
+            IWebElement elem = FindElementTimeout(5, x => driver.FindElementById(x), "fld-e");
+            if (elem is null) return false;
 
-            //elem = find_element_timeout(5, lambda: driver.find_element_by_id('email'),
-            //                            'unable to find email element for login', False)
-
-            Console.WriteLine("entering email");
+            Console.WriteLine(name + ": entering email");
 
             elem.SendKeys(Keys.Control + "a");
             elem.SendKeys(email);
 
-            elem = FindElementTimeout(5, x => driver.FindElementById(x), "password");
+            elem = FindElementTimeout(5, x => driver.FindElementById(x), "fld-p1");
+            if (elem is null) return false;
 
-            //elem = find_element_timeout(5, lambda: driver.find_element_by_id('password'),
-            //                            'unable to find password element for login', False)
-
-            Console.WriteLine("entering password");
+            Console.WriteLine(name + ": entering password");
 
             elem.SendKeys(Keys.Control + "a");
             elem.SendKeys(password);
@@ -178,7 +113,41 @@ namespace Love_Bot.Sites {
 
             elem.SendKeys(Keys.Enter);
 
-            Console.WriteLine("success");
+            WaitUntilStale(10, elem, () => { bool b = elem.Displayed || elem.Enabled; });
+
+            return true;
+        }
+
+        protected override Product ParseBrowser(string url) {
+            Console.WriteLine(name + ": checking Bestbuy");
+            AddToCartButton = null;
+            driver.Navigate().GoToUrl(url);
+            Product product = new Product();
+            product.link = url;
+
+            IWebElement elem = FindElementTimeout(3, x => driver.FindElementByXPath(x), itemNameXpath);
+            if (elem != null) {
+                product.name = elem.GetAttribute("innerText").Trim();
+            }
+
+            elem = FindElementTimeout(1, x => driver.FindElementByXPath(x), itemPriceXpath);
+            if (elem != null) {
+                //Console.WriteLine("price = [" + elem.GetAttribute("innerText") +  "]");
+                float number;
+                product.price = float.TryParse(elem.GetAttribute("innerText"), style, culture, out number) ? number : Single.NaN;
+            }
+
+            elem = FindElementTimeout(1, x => driver.FindElementByXPath(x), itemButtonXpath);
+            if (elem != null) {
+                product.button = elem.GetAttribute("innerText").ToLower();
+                AddToCartButton = elem;
+            }
+
+            return product;
+        }
+
+        protected override Product ParseNoBrowser(string url) {
+            throw new NotImplementedException();
         }
     }
 }

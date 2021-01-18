@@ -91,7 +91,7 @@ namespace Love_Bot {
                     if (threads.ContainsKey(config.Key)) {
                         Console.WriteLine("updating bot: " + config.Key);
                         Website w = threads[config.Key].Item2;
-                        w.config.Update(config.Value);
+                        w.UpdateConfigs(config.Value);
                         Console.WriteLine("done");
                     }
                     else {
@@ -128,6 +128,9 @@ namespace Love_Bot {
             }
             else if (site.ToLower().Equals("www.gamestop.com")) {
                 return new Gamestop(name, config, payment);
+            }
+            else if (site.ToLower().Equals("www.bestbuy.com")) {
+                return new BestBuy(name, config, payment);
             }
             else {
                 Console.WriteLine(site + " is not supported");

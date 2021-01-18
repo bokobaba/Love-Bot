@@ -17,7 +17,6 @@ namespace Love_Bot.Sites {
         public Gamestop(string name, WebsiteConfig config, Dictionary<string, Dictionary<string, string>> cred)
             : base(name, config, cred) {
             config.loadBrowserOnStart = true;
-            config.stayLoggedIn = true;
         }
 
         protected override string AddToCartText {
@@ -29,7 +28,6 @@ namespace Love_Bot.Sites {
         public override void UpdateConfigs(WebsiteConfig newConfig) {
             base.UpdateConfigs(newConfig);
             config.loadBrowserOnStart = true;
-            config.stayLoggedIn = true;
         }
 
         protected override bool AddToCart(string url, bool refresh = false) {
@@ -161,6 +159,7 @@ namespace Love_Bot.Sites {
 
         protected override Product ParseBrowser(string url) {
             Console.WriteLine(name + ": checking gamestop");
+            AddToCartButton = null;
             driver.Navigate().GoToUrl(url);
             Product product = new Product();
             product.link = url;
@@ -174,7 +173,7 @@ namespace Love_Bot.Sites {
             if (elem != null) {
                 //Console.WriteLine("price = [" + elem.GetAttribute("innerText") +  "]");
                 float number;
-                product.price = float.TryParse(elem.GetAttribute("innerText"), style, culture, out number) ? number : float.MaxValue;
+                product.price = float.TryParse(elem.GetAttribute("innerText"), style, culture, out number) ? number : Single.NaN;
             }
 
             elem = FindElementTimeout(1, x => driver.FindElementByXPath(x), itemButtonXpath);
