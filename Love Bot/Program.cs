@@ -12,7 +12,7 @@ namespace Love_Bot {
         private static Dictionary<string, WebsiteConfig> configs = new Dictionary<string, WebsiteConfig>();
         private static Dictionary<string, Dictionary<string, string>> payment = new Dictionary<string, Dictionary<string, string>>();
         private static Dictionary<string, Tuple<Thread, Website>> threads = new Dictionary<string, Tuple<Thread, Website>>();
-        private static int delay = 30;
+        private static int checkInterval = 30;
 
         private class Options {
             [Value(0)]
@@ -55,6 +55,7 @@ namespace Love_Bot {
 
         private static void CreateBotThread(string name, Website site) {
             Console.WriteLine("creating bot: " + name);
+            site.abort = new CancellationTokenSource();
             Thread thread = new Thread(async () => await site.Run());
             thread.Name = name;
             threads.Add(name, new Tuple<Thread, Website>(thread, site));
@@ -62,12 +63,21 @@ namespace Love_Bot {
         }
 
         private static void CheckConfigs(string path) {
-            while (false) {
-                Thread.Sleep(delay * 1000);
+            while (true) {
+                Thread.Sleep(checkInterval * 1000);
+
+                foreach(KeyValuePair<string, Tuple<Thread, Website>> kvp in threads) {
+                    if (kvp.Value.Item2.searchTask.IsCompleted) {
+                        Console.WriteLine("removing thread: " + kvp.Value.Item1.Name);
+                        kvp.Value.Item2.abort.Cancel();
+                        threads.Remove(kvp.Key);
+                    }
+                }
+
+                Console.WriteLine("checking config file");
 
                 if (!File.Exists(path)) continue;
 
-                Console.WriteLine("checking config file");
                 Dictionary<string, WebsiteConfig> newConfigs = LoadConfig(path);
 
                 if (newConfigs is null || newConfigs.Count == 0) {
@@ -75,13 +85,13 @@ namespace Love_Bot {
                 }
 
                 foreach (string name in configs.Keys) {
-                    Tuple<Thread, Website> t = threads[name];
-                    if (t.Item2.abort)
-                        threads.Remove(name);
-                    else if (!newConfigs.Keys.Contains(name)) {
-                        Console.WriteLine("removing bot: " + name);
-                        t.Item2.abort = true;
-                        threads.Remove(name);
+                    if (threads.ContainsKey(name)) {
+                        Tuple<Thread, Website> t = threads[name];
+                        if (!newConfigs.Keys.Contains(name)) {
+                            Console.WriteLine("removing bot: " + name);
+                            t.Item2.abort.Cancel();
+                            threads.Remove(name);
+                        }
                     }
                 }
 
@@ -156,7 +166,7 @@ namespace Love_Bot {
 
             //    Console.WriteLine(c.Key + "\n" + c.Value);
             //}
-            //File.Delete(path);
+            File.Delete(path);
             return configs;
         }
 
@@ -174,7 +184,7 @@ namespace Love_Bot {
             //}
 
             //payment["billingInfo"].Select(i => $"{i.Key}: {i.Value}").ToList().ForEach(Console.WriteLine);
-            //File.Delete(path);
+            File.Delete(path);
             return payment;
         }
 

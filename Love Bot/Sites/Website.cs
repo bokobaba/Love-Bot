@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Love_Bot.Sites {
@@ -11,11 +12,13 @@ namespace Love_Bot.Sites {
         private int purchases = 0;
         private bool searching = false;
         private bool loggingin = false;
+        public Task searchTask, loginTask;
 
         public string name;
         public WebsiteConfig config;
         public Dictionary<string, Dictionary<string, string>> paymentInfo;
-        public bool abort = false;
+        public CancellationTokenSource abort;
+        //public bool abort = false;
 
         protected ChromeDriver driver;
         protected NumberStyles style = NumberStyles.Number | NumberStyles.AllowCurrencySymbol;
@@ -29,7 +32,6 @@ namespace Love_Bot.Sites {
         protected static readonly List<string> userAgents = new List<string>() {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36",
             "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2919.83 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2866.71 Safari/537.36",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36",
             "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.157 Safari/537.36",
@@ -110,11 +112,11 @@ namespace Love_Bot.Sites {
             //    await Task.Delay(TimeSpan.FromSeconds(config.delay)); 
             //});
             //Task loginTask = Task.Run(async () => { await Task.Delay(TimeSpan.FromSeconds(config.loginInterval)); });
-            Task searchTask = Search();
-            Task loginTask = StayLoggedIn();
-            (int, int) ids = (searchTask.Id, loginTask.Id);
-            tasks.Add(searchTask);
-            tasks.Add(loginTask);
+            searchTask = Search();
+            loginTask = StayLoggedIn();
+
+            CancellationTokenSource tokenSource = new CancellationTokenSource();
+
 
             await searchTask;
             await loginTask;
@@ -139,25 +141,25 @@ namespace Love_Bot.Sites {
             //        tasks.Add(task);
             //    }
             //}
-            Console.WriteLine("end");
             End();
         }
 
         private void End() {
             Console.WriteLine("bot: " + name + " has exited");
-            abort = true;
+            if (driver != null)
+                driver.Dispose();
         }
 
         private async Task Search() {
             //if (abort) return;
-            while (!abort) {
+            while (!abort.IsCancellationRequested) {
                 //Console.WriteLine("starting search: " + DateTime.Now);
-                await Task.Delay(TimeSpan.FromSeconds(config.delay));
+                await Task.Delay(TimeSpan.FromSeconds(config.delay), abort.Token).ContinueWith(tsk => { });
                 //Console.WriteLine("ending search: " + DateTime.Now);
-                while ((searching || loggingin) && !abort) { }
+                while ((searching || loggingin) && !abort.IsCancellationRequested) { }
                 searching = true;
                 foreach (string url in config.urls) {
-                    if (abort) break;
+                    if (abort.IsCancellationRequested) break;
                     Product product = driver is null ? ParseNoBrowser(url) : ParseBrowser(url);
                     if (VerifyProduct(product)) {
                         PurchaseItem(product);
@@ -165,11 +167,13 @@ namespace Love_Bot.Sites {
                             Console.WriteLine(name + ": restarting browser");
                             driver.Dispose();
                             driver = InitDriver();
+                            if (config.stayLoggedIn)
+                                Login(config.login[0], config.login[1]);
                         }
                     }
 
                     if (config.maxPurchases > 0 && purchases >= config.maxPurchases) {
-                        abort = true;
+                        return;
                     }
                 }
                 searching = false;
@@ -178,12 +182,12 @@ namespace Love_Bot.Sites {
 
         private async Task StayLoggedIn() {
             //if (abort) return;
-            while (!abort) {
+            while (!abort.IsCancellationRequested) {
                 //Console.WriteLine("starting login: " + DateTime.Now);
-                await Task.Delay(TimeSpan.FromSeconds(config.loginInterval));
+                await Task.Delay(TimeSpan.FromSeconds(config.loginInterval), abort.Token).ContinueWith(tsk => { });
                 //Console.WriteLine("ending login: " + DateTime.Now);
-                while ((searching || loggingin) && !abort) { }
-                if (abort) break;
+                while ((searching || loggingin) && !abort.IsCancellationRequested) { }
+                if (abort.IsCancellationRequested) break;
                 loggingin = true;
                 if (driver != null && config.stayLoggedIn) {
                     Login(config.login[0], config.login[1]);
@@ -212,7 +216,9 @@ namespace Love_Bot.Sites {
             //options.AddUserProfilePreference("profile.managed_default_content_settings.images", 0);
 
             Random r = new Random();
-            options.AddArgument("--user-agent=" + userAgents[r.Next(0, userAgents.Count - 1)]);
+            string agent = userAgents[r.Next(0, userAgents.Count - 1)];
+            Console.WriteLine(name + ": useragent = " + agent);
+            options.AddArgument("--user-agent=" + agent);
 
             options.Proxy = null;
 
@@ -254,7 +260,7 @@ namespace Love_Bot.Sites {
         
             if (!config.stayLoggedIn) {
                 while (!Login(config.login[0], config.login[1])) {
-                    if (abort) return;
+                    if (abort.IsCancellationRequested) return;
                     Console.WriteLine(name + ": login failed");
                     if (attempts - 1 > config.checkoutAttempts)
                         return;
@@ -264,7 +270,7 @@ namespace Love_Bot.Sites {
 
             int refresh = attempts;
             while (!AddToCart(product.link, !config.loadBrowserOnStart || attempts > refresh)) {
-                if (abort) return;
+                if (abort.IsCancellationRequested) return;
                 AddToCartButton = null;
                 Console.WriteLine(name + ": add to cart failed");
                 if (attempts - 1 > config.checkoutAttempts)
@@ -273,7 +279,7 @@ namespace Love_Bot.Sites {
             }
 
             while (!Checkout()) {
-                if (abort) return;
+                if (abort.IsCancellationRequested) return;
                 Console.WriteLine(name + ": checkout failed");
                 if (attempts - 1 > config.checkoutAttempts)
                     return;
@@ -335,6 +341,8 @@ namespace Love_Bot.Sites {
                     return Exceptions.ElementClickIntercepted;
                 } catch (ElementNotInteractableException) {
                     //Console.WriteLine("not interactable");
+                    continue;
+                } catch (NoSuchElementException) {
                     continue;
                 }
             }

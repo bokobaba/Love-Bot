@@ -15,11 +15,12 @@ namespace Love_Bot.Sites {
             loginUrl = "https://www.walmart.com/account/login",
             itemNameXpath = "//h1[@class='prod-ProductTitle prod-productTitle-buyBox font-bold']",
             itemPriceXpath = "//span[@class='price display-inline-block arrange-fit price']/span[@class='visuallyhidden']",
-            itemButtonXpath = "//button[@class='button prod-ProductCTA--primary prod-ProductCTA--server display-inline-block button--primary']";
+            itemButtonXpath = "//button[@data-tl-id='ProductPrimaryCTA-cta_add_to_cart_button']",
+            itemButtonXpath2 = "//span[contains(text(), 'Add to cart')]";
 
         protected override string AddToCartText {
             get {
-                return "Add to cart";
+                return "add to cart";
             }
         }
 
@@ -51,18 +52,17 @@ namespace Love_Bot.Sites {
             node = doc.DocumentNode.SelectSingleNode(itemPriceXpath);
             if (node != null) {
                 //Console.WriteLine("\n price:\n" + node.InnerText);
-                NumberStyles style = NumberStyles.Number | NumberStyles.AllowCurrencySymbol;
-                CultureInfo culture = CultureInfo.CreateSpecificCulture("en-US");
                 float number;
                 product.price = float.TryParse(node.InnerText, style, culture, out number) ? number : float.MaxValue;
             }
             
-            node = doc.DocumentNode.SelectSingleNode(itemButtonXpath);
+            node = doc.DocumentNode.SelectSingleNode(itemButtonXpath2);
+            Console.WriteLine("inner = " + node.InnerHtml);
             if (node != null) {
-                Console.WriteLine(node.InnerText);
+                Console.WriteLine("inner text = " + node.InnerHtml);
                 //Console.WriteLine("\n button:\n" + node.Attributes["value"].Value);
                 //product.button = node.Attributes["value"] == null ? "null" : node.Attributes["value"].Value;
-                product.button = node.InnerText == null ? "null" : node.InnerText;
+                product.button = node.InnerText == null ? "null" : node.InnerText.ToLower();
             }
 
             product.link = url;
@@ -80,6 +80,11 @@ namespace Love_Bot.Sites {
             IWebElement elem = FindElementTimeout(3, x => driver.FindElementByXPath(x), itemNameXpath);
             if (elem != null) {
                 product.name = elem.GetAttribute("innerText").Trim();
+            } else {
+                if (driver.Url.ToLower().Contains("blocked")) {
+                    Console.WriteLine("captcha detected press enter when solved");
+                    Console.ReadLine();
+                }
             }
 
             elem = FindElementTimeout(1, x => driver.FindElementByXPath(x), itemPriceXpath);
@@ -89,9 +94,10 @@ namespace Love_Bot.Sites {
                 product.price = float.TryParse(elem.GetAttribute("innerText"), style, culture, out number) ? number : float.MaxValue;
             }
 
-            elem = FindElementTimeout(1, x => driver.FindElementByXPath(x), itemButtonXpath);
+            elem = FindElementTimeout(1, x => driver.FindElementByXPath(x), itemButtonXpath2);
             if (elem != null) {
-                product.button = elem.Text.ToLower();
+                Console.WriteLine("setting button");
+                product.button = elem.GetAttribute("innerText").ToLower();
                 AddToCartButton = elem;
             }
 
@@ -107,8 +113,7 @@ namespace Love_Bot.Sites {
             try {
                 if (AddToCartButton is null) {
 
-                    AddToCartButton = FindElementTimeout(5, x => driver.FindElementByXPath(x),
-                        "//button[@class='button spin-button prod-ProductCTA--primary button--primary']");
+                    AddToCartButton = FindElementTimeout(5, x => driver.FindElementByXPath(x), itemButtonXpath);
                 }
                 TryInvokeElement(5, () => { AddToCartButton.Click(); });
                 WaitUntilStale(10, AddToCartButton, () => { bool b = AddToCartButton.Displayed; });
@@ -121,7 +126,6 @@ namespace Love_Bot.Sites {
                     Console.ReadLine();
                     return AddToCart(url);
                 } catch (NoSuchElementException e) {
-                    Console.WriteLine(e.Message);
                     Console.WriteLine(name + ": no captcha detected");
                 }
             }
@@ -218,6 +222,13 @@ namespace Love_Bot.Sites {
             Task.Delay(500).Wait();
 
             elem.SendKeys(Keys.Enter);
+
+            WaitUntilStale(5, elem, () => { bool b = elem.Displayed || elem.Enabled; });
+            if (driver.Url.ToLower().Contains("account/login") || driver.Url.ToLower().Contains("blocked")) {
+                Console.WriteLine(name + "capcha detected press enter when solved");
+                Console.ReadLine();
+            }
+            
 
             Console.WriteLine(name + ": Login Successful");
             return true;
