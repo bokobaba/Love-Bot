@@ -63,7 +63,7 @@ namespace Love_Bot {
         }
 
         private static void CheckConfigs(string path) {
-            while (true) {
+            while (false) {
                 Thread.Sleep(checkInterval * 1000);
 
                 foreach(KeyValuePair<string, Tuple<Thread, Website>> kvp in threads) {
@@ -166,7 +166,7 @@ namespace Love_Bot {
 
             //    Console.WriteLine(c.Key + "\n" + c.Value);
             //}
-            File.Delete(path);
+            //File.Delete(path);
             return configs;
         }
 
@@ -184,7 +184,7 @@ namespace Love_Bot {
             //}
 
             //payment["billingInfo"].Select(i => $"{i.Key}: {i.Value}").ToList().ForEach(Console.WriteLine);
-            File.Delete(path);
+            //File.Delete(path);
             return payment;
         }
 

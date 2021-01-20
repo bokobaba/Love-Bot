@@ -56,42 +56,15 @@ namespace Love_Bot.Sites {
             if (bttn is null) return false;
             bttn.Click();
 
-            Console.ReadLine();
             return true;
-
-            //IWebElement elem;
-            //if (buyNow) {
-            //    Console.WriteLine(name + ": Buy Now button detected");
-            //    if (AddToCartButton is null) {
-            //        elem = FindElementTimeout(20, x => driver.FindElementById(x), "buy-now-button");
-            //        if (elem != null) {
-            //            elem.Click();
-            //            return true;
-            //        }
-            //    }
-            //}
-
-            //elem = FindElementTimeout(5, x => driver.FindElementById(x), "add-to-cart-button");
-            //if (elem is null) return false;
-            //elem.Click();
-
-            //if (TryInvokeElement(5, () => { AddToCartButton.Click(); }) != Exceptions.None)
-            //    return false;
-
-
-            //IWebElement bttn = FindElementTimeout(5, x => driver.FindElementById(x), "hlb-ptc-btn-native");
-            //if (bttn is null) return false;
-            //bttn.Click();
-
-            //return true;
         }
         
         protected override bool Checkout() {
-            Console.WriteLine("checkout");
+            Console.WriteLine(name + ": checkout Amazon");
             if (buyNow) {
                 IReadOnlyCollection<IWebElement> popover = driver.FindElements(By.Id("a-popover-lgtbox"));
                 if (popover.Count > 0) {
-                    Console.WriteLine("popup detected");
+                    Console.WriteLine(name + ": popup detected");
                     IWebElement iframe = FindElementTimeout(5, x => driver.FindElement(By.Id(x)),
                     "turbo-checkout-iframe");
                     if (iframe is null) return false;
@@ -112,26 +85,29 @@ namespace Love_Bot.Sites {
 
             driver.Navigate().GoToUrl(checkouturl);
 
-            IWebElement elem = FindElementTimeout(20, x => driver.FindElementByTagName(x), "fieldset");
-            if (elem != null) {
-                IReadOnlyCollection<IWebElement> radios = elem.FindElements(By.TagName("div"));
-                for (int i = 1; i < radios.Count; ++i) {
-                    IWebElement e = radios.ElementAt(i).FindElement(By.CssSelector("span[class='a-color-secondary']"));
-                    if (elem is null) continue;
-                    Console.WriteLine(e.Text);
-                    if (e.Text.Contains("FREE") && !e.Text.Contains("trial")) {
-                        radios.ElementAt(i).Click();
-                        break;
-                    }
-                }
+            //IWebElement elem = FindElementTimeout(20, x => driver.FindElementByTagName(x), "fieldset");
+            //if (elem != null) {
+            //    IReadOnlyCollection<IWebElement> radios = elem.FindElements(By.TagName("div"));
+            //    for (int i = 1; i < radios.Count; ++i) {
+            //        IWebElement e = radios.ElementAt(i).FindElement(By.CssSelector("span[class='a-color-secondary']"));
+            //        if (elem is null) continue;
+            //        if (e.Text.Contains("FREE") && !e.Text.Contains("trial")) {
+            //            radios.ElementAt(i).Click();
+            //            break;
+            //        }
+            //    }
+            //}
+
+            Console.WriteLine(name + ": searching for place order button");
+            IWebElement elem = FindElementTimeout(5, x => driver.FindElementByXPath(x), "//input[@class='a-button-text place-your-order-button']");
+            if (elem is null) return false;
+            if (config.placeOrder) {
+                elem.Click();
+                WaitUntilStale(30, elem, () => { bool b = elem.Displayed || elem.Enabled; });
+            } else {
+                Console.WriteLine(elem.GetAttribute("title"));
             }
 
-            elem = FindElementTimeout(20, x => driver.FindElementById(x), "placeYourOrder");
-            if (elem is null) return false;
-            if (config.placeOrder)
-                elem.Click();
-
-            Task.Delay(10000).Wait();
             return true;
         }
 

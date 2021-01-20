@@ -37,12 +37,11 @@ namespace Love_Bot.Sites {
         protected override bool AddToCart(string url, bool refresh = false) {
             Console.WriteLine(name + ": adding product to Bestbuy cart");
 
-            if (refresh)
+            if (refresh) {
                 driver.Navigate().GoToUrl(url);
-            //Console.ReadLine();
-            if (AddToCartButton is null) {
                 AddToCartButton = FindElementTimeout(5, x => driver.FindElementByXPath(x), itemButtonXpath);
             }
+            if (AddToCartButton is null) return false;
             TryInvokeElement(5, () => { AddToCartButton.Click(); });
 
             FindElementTimeout(5, x => driver.FindElementByXPath(x), "div[@class='cart-subtotal'");
@@ -67,6 +66,13 @@ namespace Love_Bot.Sites {
             elem.Click();
             WaitUntilStale(5, elem, () => { bool b = elem.Displayed || elem.Enabled; });
 
+            elem = FindElementTimeout(2, x => driver.FindElementById(x), "credit-card-cvv");
+            if (elem != null) {
+                Console.WriteLine(name + ": entering cvv");
+                elem.SendKeys(Keys.Control + "a");
+                elem.SendKeys(paymentInfo["paymentInfo"]["cvv"]);
+            }
+
             Console.WriteLine(name + ": searcing for place order button");
             elem = FindElementTimeout(5, x => driver.FindElementByXPath(x), 
                 "//button[@class='btn btn-lg btn-block btn-primary button__fast-track']");
@@ -75,11 +81,11 @@ namespace Love_Bot.Sites {
                 if (TryInvokeElement(5, () => {
                     new OpenQA.Selenium.Interactions.Actions(driver).MoveToElement(elem).Click(elem).Perform();
                 }) != Exceptions.None) return false;
+                WaitUntilStale(30, elem, () => { bool b = elem.Displayed || elem.Enabled; });
 
             }
             else
                 Console.WriteLine(elem.GetAttribute("innerText"));
-
 
             return true;
         }

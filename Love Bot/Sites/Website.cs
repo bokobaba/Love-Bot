@@ -33,10 +33,8 @@ namespace Love_Bot.Sites {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36",
             "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2919.83 Safari/537.36",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.157 Safari/537.36",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.90 Safari/537.36",
             "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36",
             "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36",
             "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.83 Safari/537.1",
@@ -100,7 +98,7 @@ namespace Love_Bot.Sites {
                 driver = InitDriver();
                 //driver.Navigate().GoToUrl(config.urls[0]);
             }
-            if (config.stayLoggedIn)
+            if (driver != null && config.stayLoggedIn)
                 Login(config.login[0], config.login[1]);
 
             Task.Run(() => startTasks()).Wait();
@@ -146,8 +144,6 @@ namespace Love_Bot.Sites {
 
         private void End() {
             Console.WriteLine("bot: " + name + " has exited");
-            if (driver != null)
-                driver.Dispose();
         }
 
         private async Task Search() {
@@ -173,6 +169,8 @@ namespace Love_Bot.Sites {
                     }
 
                     if (config.maxPurchases > 0 && purchases >= config.maxPurchases) {
+                        searching = false;
+                        driver.Dispose();
                         return;
                     }
                 }
@@ -190,6 +188,7 @@ namespace Love_Bot.Sites {
                 if (abort.IsCancellationRequested) break;
                 loggingin = true;
                 if (driver != null && config.stayLoggedIn) {
+                    AddToCartButton = null;
                     Login(config.login[0], config.login[1]);
                 }
                 loggingin = false;
@@ -259,6 +258,7 @@ namespace Love_Bot.Sites {
             Console.WriteLine(name + ": purchase attempt " + attempts++);
         
             if (!config.stayLoggedIn) {
+                AddToCartButton = null;
                 while (!Login(config.login[0], config.login[1])) {
                     if (abort.IsCancellationRequested) return;
                     Console.WriteLine(name + ": login failed");
@@ -269,7 +269,7 @@ namespace Love_Bot.Sites {
             }
 
             int refresh = attempts;
-            while (!AddToCart(product.link, !config.loadBrowserOnStart || attempts > refresh)) {
+            while (!AddToCart(product.link, AddToCartButton is null || attempts > refresh)) {
                 if (abort.IsCancellationRequested) return;
                 AddToCartButton = null;
                 Console.WriteLine(name + ": add to cart failed");

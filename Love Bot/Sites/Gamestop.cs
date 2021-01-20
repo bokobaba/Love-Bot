@@ -31,7 +31,7 @@ namespace Love_Bot.Sites {
         }
 
         protected override bool AddToCart(string url, bool refresh = false) {
-            Console.WriteLine(name + ": adding to gamestop cart");
+            Console.WriteLine(name + ": adding product to gamestop cart");
             if (AddToCartButton is null) {
                 driver.Navigate().GoToUrl(url);
 
@@ -116,10 +116,11 @@ namespace Love_Bot.Sites {
                 if (TryInvokeElement(5, () => {
                     new OpenQA.Selenium.Interactions.Actions(driver).MoveToElement(e).Click(e).Perform();
                 }) != Exceptions.None) return false;
+                WaitUntilStale(30, e, () => { bool b = e.Displayed || e.Enabled; });
             } else
                 Console.WriteLine(e.GetAttribute("value"));
 
-            Task.Delay(10000).Wait();
+            
 
             return true;
         }

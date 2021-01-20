@@ -11,7 +11,7 @@ using System.IO;
 namespace Love_Bot.Sites {
     class Walmart : Website {
         private static readonly string
-            cartUrl = "https://www.walmart.com/checkout/#/fulfillment",
+            checkoutUrl = "https://www.walmart.com/checkout/#/fulfillment",
             loginUrl = "https://www.walmart.com/account/login",
             itemNameXpath = "//h1[@class='prod-ProductTitle prod-productTitle-buyBox font-bold']",
             itemPriceXpath = "//span[@class='price display-inline-block arrange-fit price']/span[@class='visuallyhidden']",
@@ -136,7 +136,7 @@ namespace Love_Bot.Sites {
 
             Console.WriteLine(name + ": checkout Walmart");
 
-            driver.Navigate().GoToUrl(cartUrl);
+            driver.Navigate().GoToUrl(checkoutUrl);
 
             IWebElement bttn;
 
@@ -185,6 +185,7 @@ namespace Love_Bot.Sites {
             if (bttn is null) return false;
             if (config.placeOrder) {
                 bttn.Click();
+                WaitUntilStale(30, bttn, () => { bool b = bttn.Displayed || bttn.Enabled; });
             } else
                 Console.WriteLine(name + ": " + bttn.GetAttribute("innerText"));
 
