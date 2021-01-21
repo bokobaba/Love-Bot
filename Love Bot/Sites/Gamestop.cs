@@ -8,6 +8,7 @@ namespace Love_Bot.Sites {
     class Gamestop : Website {
         private static readonly string
             logouturl = "https://www.gamestop.com/logout/",
+            loginUrl = "http://gamestop.com/?openLoginModal=accountModal",
             cartUrl = "https://www.gamestop.com/cart/",
             checkouturl = "https://www.gamestop.com/checkout/?stage=payment#payment",
             itemnameXpath = "//h1[@class='product-name h2']",
@@ -128,12 +129,14 @@ namespace Love_Bot.Sites {
         protected override bool Login(string email, string password) {
             Console.WriteLine("logging into gamestop");
             driver.Navigate().GoToUrl(logouturl);
-            
-            IWebElement elem = FindElementTimeout(10, x => driver.FindElementByCssSelector(x), "[href='#accountModal'");
-            if (elem is null) return false;
-            elem.Click();
-            
-            elem = FindElementTimeout(10, x => driver.FindElementById(x), "signIn");
+            Task.Delay(2000).Wait();
+            driver.Navigate().GoToUrl(loginUrl);
+
+            //IWebElement elem = FindElementTimeout(10, x => driver.FindElementByCssSelector(x), "[href='#accountModal'");
+            //if (elem is null) return false;
+            //elem.Click();
+
+            IWebElement elem = FindElementTimeout(10, x => driver.FindElementById(x), "signIn");
             if (elem is null) return false;
             Exceptions ex = TryInvokeElement(10, () => { elem.Click(); });
 

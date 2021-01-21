@@ -13,6 +13,7 @@ namespace Love_Bot.Sites {
             cartUrl = "https://www.amazon.com/gp/cart/view.html?ref_=nav_cart",
             loginUrl = "https://www.amazon.com/",
             checkouturl = "https://www.amazon.com/gp/buy/spc/handlers/display.html?hasWorkingJavascript=1",
+            checkoutUrl2 = "https://www.amazon.com/gp/buy/spc/handlers/display.html?hasWorkingJavascript=1",
             itemNameXpath = "//span[@id='productTitle']",
             itemNameId = "productTitle",
             itemPriceXpath = "//span[@id='newBuyBoxPrice']",
@@ -48,6 +49,7 @@ namespace Love_Bot.Sites {
 
             if (TryInvokeElement(5, () => { AddToCartButton.Click(); }) != Exceptions.None)
                 return false;
+            WaitUntilStale(10, AddToCartButton, () => { bool b = AddToCartButton.Displayed || AddToCartButton.Enabled; });
 
             if (buyNow)
                 return true;
@@ -61,29 +63,27 @@ namespace Love_Bot.Sites {
         
         protected override bool Checkout() {
             Console.WriteLine(name + ": checkout Amazon");
-            if (buyNow) {
-                IReadOnlyCollection<IWebElement> popover = driver.FindElements(By.Id("a-popover-lgtbox"));
-                if (popover.Count > 0) {
-                    Console.WriteLine(name + ": popup detected");
-                    IWebElement iframe = FindElementTimeout(5, x => driver.FindElement(By.Id(x)),
-                    "turbo-checkout-iframe");
-                    if (iframe is null) return false;
-                    driver.SwitchTo().Frame(iframe);
-                    IWebElement e = FindElementTimeout(5, x => driver.FindElement(By.Id(x)),
-                        "turbo-checkout-pyo-button");
-                    if (e is null) return false;
+            //IReadOnlyCollection<IWebElement> popover = driver.FindElements(By.Id("a-popover-lgtbox"));
+            //if (popover.Count > 0) {
+            //    Console.WriteLine(name + ": popup detected");
+            //    IWebElement iframe = FindElementTimeout(5, x => driver.FindElement(By.Id(x)),
+            //    "turbo-checkout-iframe");
+            //    if (iframe is null) return false;
+            //    driver.SwitchTo().Frame(iframe);
+            //    IWebElement e = FindElementTimeout(5, x => driver.FindElement(By.Id(x)),
+            //        "turbo-checkout-pyo-button");
+            //    if (e is null) return false;
 
-                    if (config.placeOrder)
-                        e.Click();
-                    else
-                        Console.WriteLine(e.GetAttribute("value"));
-                    return true;
-                }
-                else
-                    return false;
-            }
-
-            driver.Navigate().GoToUrl(checkouturl);
+            //    if (config.placeOrder)
+            //        e.Click();
+            //    else
+            //        Console.WriteLine(e.GetAttribute("value"));
+            //    return true;
+            //}
+            //else
+            //    return false;
+            //if (!buyNow)
+            //    driver.Navigate().GoToUrl(checkouturl);
 
             //IWebElement elem = FindElementTimeout(20, x => driver.FindElementByTagName(x), "fieldset");
             //if (elem != null) {
@@ -97,15 +97,19 @@ namespace Love_Bot.Sites {
             //        }
             //    }
             //}
-
+            if (!buyNow) {
+                driver.Navigate().GoToUrl(checkoutUrl2);
+            }
+            
+            buyNow = false;
             Console.WriteLine(name + ": searching for place order button");
-            IWebElement elem = FindElementTimeout(5, x => driver.FindElementByXPath(x), "//input[@class='a-button-text place-your-order-button']");
+            IWebElement elem = FindElementTimeout(5, x => driver.FindElementByName(x), "placeYourOrder1");
             if (elem is null) return false;
             if (config.placeOrder) {
                 elem.Click();
                 WaitUntilStale(30, elem, () => { bool b = elem.Displayed || elem.Enabled; });
             } else {
-                Console.WriteLine(elem.GetAttribute("title"));
+                Console.WriteLine(name + ": " + elem.GetAttribute("name"));
             }
 
             return true;

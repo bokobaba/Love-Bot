@@ -12,7 +12,7 @@ namespace Love_Bot.Sites {
     class Walmart : Website {
         private static readonly string
             checkoutUrl = "https://www.walmart.com/checkout/#/fulfillment",
-            loginUrl = "https://www.walmart.com/account/login",
+            loginUrl = "https://www.walmart.com/account/logout",
             itemNameXpath = "//h1[@class='prod-ProductTitle prod-productTitle-buyBox font-bold']",
             itemPriceXpath = "//span[@class='price display-inline-block arrange-fit price']/span[@class='visuallyhidden']",
             itemButtonXpath = "//button[@data-tl-id='ProductPrimaryCTA-cta_add_to_cart_button']",
@@ -143,8 +143,9 @@ namespace Love_Bot.Sites {
             Console.WriteLine(name + ": searching for continue button");
             try {
                 bttn = FindElementTimeout(10, x => driver.FindElementByXPath(x),
-                "//button[@class='button cxo-continue-btn button--primary']");
+                "//span[contains(text(), 'Continue')]");
                 TryInvokeElement(5, () => { bttn.Click(); });
+                WaitUntilStale(5, bttn, () => { bool b = bttn.Displayed || bttn.Enabled; });
             } catch (Exception ex) {
                 Console.WriteLine(ex.Message);
                 try {
@@ -159,21 +160,21 @@ namespace Love_Bot.Sites {
 
             }
 
-            bttn = FindElementTimeout(5, x => driver.FindElementByXPath(x),
+            Console.WriteLine(name + ": searching for next continue button");
+            bttn = FindElementTimeout(1, x => driver.FindElementByXPath(x),
                 "//button[@class='button button--primary']");
-            if (bttn is null) return false;
-            TryInvokeElement(5, () => { bttn.Click(); });
+            if (bttn != null) {
+                if (TryInvokeElement(5, () => { bttn.Click(); }) != Exceptions.None) return false;
 
-            //bttn = FindElementTimeout(5, x => driver.FindElementByXPath(x),
-            //    "//span[contains(text(), 'Review your order')]");
-            //bttn.Click();
-
-            Console.WriteLine(name + ": entering cvv");
-            bttn = FindElementTimeout(5, x => driver.FindElementById(x), "cvv-confirm");
-            if (bttn is null) return false;
-            bttn.SendKeys(Keys.Control + "a");
-            bttn.SendKeys(paymentInfo["paymentInfo"]["cvv"]);
-            bttn.SendKeys(Keys.Enter);
+                Console.WriteLine(name + ": entering cvv");
+                bttn = FindElementTimeout(5, x => driver.FindElementById(x), "cvv-confirm");
+                if (bttn is null) return false;
+                bttn.SendKeys(Keys.Control + "a");
+                bttn.SendKeys(paymentInfo["paymentInfo"]["cvv"]);
+                bttn.SendKeys(Keys.Enter);
+            } else {
+                Console.WriteLine(name + ": continue button not found");
+            }
 
 
             //bttn = FindElementTimeout(5, x => driver.FindElementByXPath(x),
@@ -181,7 +182,7 @@ namespace Love_Bot.Sites {
             //bttn.Click();
 
             bttn = FindElementTimeout(5, x => driver.FindElementByXPath(x),
-                "//button[@data-automation-id='summary-place-holder']");
+                "//span[contains(text(), 'Place order')]");
             if (bttn is null) return false;
             if (config.placeOrder) {
                 bttn.Click();

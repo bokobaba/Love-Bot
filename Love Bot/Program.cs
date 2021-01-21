@@ -142,6 +142,9 @@ namespace Love_Bot {
             else if (site.ToLower().Equals("www.bestbuy.com")) {
                 return new BestBuy(name, config, payment);
             }
+            else if (site.ToLower().Equals("www.target.com")) {
+                return new Target(name, config, payment);
+            }
             else {
                 Console.WriteLine(site + " is not supported");
                 return null;

@@ -1,13 +1,17 @@
 ﻿using HtmlAgilityPack;
+using OpenQA.Selenium;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Love_Bot.Sites {
     class Target : Website {
         private static readonly string
             cartUrl = "https://www.target.com/co-cart",
+            loginUrl = "https://www.target.com/account",
+            logoutUrl = "https://www.target.com",
             itemNameXpath = "//h1[@data-test='product-title']",
             itemPriceXpath = "//div[@data-test='product-price']",
             itemButtonXpath = "//button[@data-test='shipItButton']";
@@ -23,15 +27,60 @@ namespace Love_Bot.Sites {
         }
 
         protected override bool AddToCart(string url, bool refresh = false) {
-            throw new NotImplementedException();
+            Console.WriteLine(name + ": adding product to Target cart");
+            Console.ReadLine();
+            return true;
         }
 
         protected override bool Checkout() {
+            Console.WriteLine(name + ": checkout Target");
             throw new NotImplementedException();
         }
 
         protected override bool Login(string email, string password) {
-            throw new NotImplementedException();
+            Console.WriteLine(name + ": login to Target");
+
+            Console.ReadLine();
+            Console.WriteLine(name + ": searching for account header");
+            IWebElement elem = FindElementTimeout(5, x => driver.FindElementByXPath(x), "//span[@data-test='accountUserName']");
+            if (elem is null) return false;
+
+            driver.Navigate().GoToUrl(loginUrl);
+
+            elem.Click();
+
+            Console.WriteLine(name + ": searching for signin button");
+            elem = FindElementTimeout(5, x => elem.FindElement(By.XPath(x)), "//div[contains(text(), 'Sign in')]");
+            if (elem is null) return false;
+            elem.Click();
+
+
+            Console.WriteLine(name + ": entering email");
+
+            elem = FindElementTimeout(5, x => driver.FindElementById(x), "username");
+            if (elem is null) return false;
+
+            TryInvokeElement(5, () => { elem.SendKeys(Keys.Control + "a"); });
+            elem.SendKeys(email);
+
+            Console.WriteLine(name + ": entering password");
+
+            elem = FindElementTimeout(5, x => driver.FindElementById(x), "password");
+            if (elem is null) return false;
+
+            elem.SendKeys(Keys.Control + "a");
+            elem.SendKeys(password);
+
+            Task.Delay(500).Wait();
+
+            elem.SendKeys(Keys.Enter);
+
+            WaitUntilStale(5, elem, () => { bool b = elem.Displayed || elem.Enabled; });
+
+
+            Console.WriteLine(name + ": Login Successful");
+            Console.ReadLine();
+            return true;
         }
 
         protected override Product ParseBrowser(string url) {
