@@ -111,8 +111,8 @@ namespace Love_Bot.Sites {
             request.Method = "GET";
             request.Timeout = 20000;
             request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36";
-            request.Accept = "text/html";
-            request.ContentType = "application/json";
+            request.Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9";
+            request.ContentType = "application/json; charset=utf-8";
             request.Headers.Set(HttpRequestHeader.AcceptLanguage, "en-us,en;q=0.5");
             request.Headers.Set(HttpRequestHeader.AcceptEncoding, "gzip, deflate, br");
             request.Headers.Add("Upgrade-Insecure-Requests", "1");

@@ -341,6 +341,8 @@ namespace Love_Bot.Sites {
                     continue;
                 } catch (NoSuchElementException) {
                     continue;
+                } catch (StaleElementReferenceException) {
+                    continue;
                 }
             }
             return Exceptions.Timeout;

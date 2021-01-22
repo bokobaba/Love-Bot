@@ -3,6 +3,7 @@ using OpenQA.Selenium;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -10,20 +11,25 @@ namespace Love_Bot.Sites {
     class Target : Website {
         private static readonly string
             cartUrl = "https://www.target.com/co-cart",
-            loginUrl = "https://www.target.com/account",
-            logoutUrl = "https://www.target.com",
+            loginUrl = "https://www.target.com",
             itemNameXpath = "//h1[@data-test='product-title']",
             itemPriceXpath = "//div[@data-test='product-price']",
             itemButtonXpath = "//button[@data-test='shipItButton']";
 
         public Target(string name, WebsiteConfig config, Dictionary<string, Dictionary<string, string>> cred)
             : base(name, config, cred) {
+            config.loadBrowserOnStart = true;
         }
 
         protected override string AddToCartText {
             get {
                 return "ship it";
             }
+        }
+
+        public override void UpdateConfigs(WebsiteConfig newConfig) {
+            base.UpdateConfigs(newConfig);
+            config.loadBrowserOnStart = true;
         }
 
         protected override bool AddToCart(string url, bool refresh = false) {
@@ -39,29 +45,38 @@ namespace Love_Bot.Sites {
 
         protected override bool Login(string email, string password) {
             Console.WriteLine(name + ": login to Target");
+            driver.Navigate().GoToUrl(loginUrl);
 
-            Console.ReadLine();
             Console.WriteLine(name + ": searching for account header");
             IWebElement elem = FindElementTimeout(5, x => driver.FindElementByXPath(x), "//span[@data-test='accountUserName']");
             if (elem is null) return false;
-
-            driver.Navigate().GoToUrl(loginUrl);
-
             elem.Click();
+            if (!elem.GetAttribute("innerText").Equals("Sign in")) {
+                Console.WriteLine(name + ": signing out");
+                elem = FindElementTimeout(5, x => driver.FindElement(By.Id(x)), "accountNav-guestSignOut");
+                if (elem is null) return false;
+                Task.Delay(2000).Wait();
+                elem.Click();
+                WaitUntilStale(5, elem, () => { bool b = elem.Displayed || elem.Enabled; });
+                Login(email, password);
+            }
 
             Console.WriteLine(name + ": searching for signin button");
-            elem = FindElementTimeout(5, x => elem.FindElement(By.XPath(x)), "//div[contains(text(), 'Sign in')]");
+            elem = FindElementTimeout(5, x => driver.FindElement(By.Id(x)), "accountNav-signIn");
             if (elem is null) return false;
+            Task.Delay(2000).Wait();
             elem.Click();
 
 
             Console.WriteLine(name + ": entering email");
 
             elem = FindElementTimeout(5, x => driver.FindElementById(x), "username");
-            if (elem is null) return false;
-
-            TryInvokeElement(5, () => { elem.SendKeys(Keys.Control + "a"); });
-            elem.SendKeys(email);
+            if (elem != null) {
+                TryInvokeElement(5, () => { elem.SendKeys(Keys.Control + "a"); });
+                elem.SendKeys(email);
+            } else {
+                Console.WriteLine(name + ": no username field found");
+            }
 
             Console.WriteLine(name + ": entering password");
 
@@ -79,67 +94,40 @@ namespace Love_Bot.Sites {
 
 
             Console.WriteLine(name + ": Login Successful");
-            Console.ReadLine();
             return true;
         }
 
         protected override Product ParseBrowser(string url) {
-            throw new NotImplementedException();
+            Console.WriteLine(name + ": checking Target");
+            AddToCartButton = null;
+            driver.Navigate().GoToUrl(url);
+            Product product = new Product();
+            product.link = url;
+
+            Task.Delay(2000).Wait();
+            IWebElement elem = FindElementTimeout(3, x => driver.FindElementByXPath(x), itemNameXpath);
+            if (elem != null) {
+                TryInvokeElement(5, () => { product.name = elem.GetAttribute("innerText").Trim(); });
+            }
+
+            elem = FindElementTimeout(1, x => driver.FindElementByXPath(x), itemPriceXpath);
+            if (elem != null) {
+                //Console.WriteLine("price = [" + elem.GetAttribute("innerText") +  "]");
+                float number;
+                product.price = float.TryParse(elem.GetAttribute("innerText"), style, culture, out number) ? number : Single.NaN;
+            }
+
+            elem = FindElementTimeout(1, x => driver.FindElementByXPath(x), itemButtonXpath);
+            if (elem != null) {
+                product.button = elem.Text.ToLower();
+                AddToCartButton = elem;
+            }
+
+            return product;
         }
 
         protected override Product ParseNoBrowser(string url) {
-            Console.WriteLine(name + ": checking target");
-            string html = WebsiteUtils.GetHtmlContent(url);
-            HtmlDocument doc = new HtmlDocument();
-            doc.LoadHtml(html);
-
-            //StreamWriter file = new StreamWriter(@"C:\Test\test.txt");
-            //if (doc.DocumentNode != null)
-            //    foreach (var n in doc.DocumentNode.ChildNodes)
-            //        WebsiteUtils.WriteNode(file, n, 0);
-            //file.Close();
-
-            Product product = new Product();
-
-            HtmlNode node = doc.DocumentNode.SelectSingleNode(itemNameXpath);
-
-            if (node != null) {
-                //Console.WriteLine("\n name:\n" + node.InnerText);
-                product.name = node.InnerText == null ? "null" : node.InnerText;
-            }
-            else {
-                //Console.WriteLine("\n name:\not found");
-                product.name = "not found";
-            }
-
-            node = doc.DocumentNode.SelectSingleNode(itemPriceXpath);
-            if (node != null) {
-                //Console.WriteLine("\n price:\n" + node.InnerText);
-                NumberStyles style = NumberStyles.Number | NumberStyles.AllowCurrencySymbol;
-                CultureInfo culture = CultureInfo.CreateSpecificCulture("en-US");
-                float number;
-                product.price = float.TryParse(node.InnerText, style, culture, out number) ? number : float.MaxValue;
-            }
-            else {
-                //Console.WriteLine("\nprice:\nnot found");
-                product.price = float.MaxValue;
-            }
-
-            node = doc.DocumentNode.SelectSingleNode(itemButtonXpath);
-            if (node != null) {
-                Console.WriteLine(node.InnerText);
-                //Console.WriteLine("\n button:\n" + node.Attributes["value"].Value);
-                //product.button = node.Attributes["value"] == null ? "null" : node.Attributes["value"].Value;
-                product.button = node.InnerText == null ? "null" : node.InnerText;
-            }
-            else {
-                //Console.WriteLine("\n button: not found\n");
-                product.button = "not found";
-            }
-
-            product.link = url;
-
-            return product;
+            throw new NotImplementedException();
         }
     }
 }

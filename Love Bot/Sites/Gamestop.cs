@@ -8,10 +8,10 @@ namespace Love_Bot.Sites {
     class Gamestop : Website {
         private static readonly string
             logouturl = "https://www.gamestop.com/logout/",
-            loginUrl = "http://gamestop.com/?openLoginModal=accountModal",
+            loginUrl = "http://gamestop.com/",
             cartUrl = "https://www.gamestop.com/cart/",
             checkouturl = "https://www.gamestop.com/checkout/?stage=payment#payment",
-            itemnameXpath = "//h1[@class='product-name h2']",
+            itemNameXpath = "//h1[@class='product-name h2']",
             itemPriceXpath = "//span[@class='actual-price']",
             itemButtonXpath = "//button[@class='add-to-cart btn btn-primary ']";
 
@@ -115,7 +115,7 @@ namespace Love_Bot.Sites {
             if (e is null) return false;
             if (config.placeOrder) {
                 if (TryInvokeElement(5, () => {
-                    new OpenQA.Selenium.Interactions.Actions(driver).MoveToElement(e).Click(e).Perform();
+                    e.Click();
                 }) != Exceptions.None) return false;
                 WaitUntilStale(30, e, () => { bool b = e.Displayed || e.Enabled; });
             } else
@@ -131,12 +131,22 @@ namespace Love_Bot.Sites {
             driver.Navigate().GoToUrl(logouturl);
             Task.Delay(2000).Wait();
             driver.Navigate().GoToUrl(loginUrl);
+            IWebElement elem;
 
-            //IWebElement elem = FindElementTimeout(10, x => driver.FindElementByCssSelector(x), "[href='#accountModal'");
-            //if (elem is null) return false;
-            //elem.Click();
+            elem = FindElementTimeout(5, x => driver.FindElementByXPath(x), "//button[@class='navbar-toggler']");
+            if (elem != null) {
+                if (TryInvokeElement(2, () => { elem.Click(); }) != Exceptions.None) {
+                    elem = FindElementTimeout(5, x => driver.FindElementByXPath(x), "//div[contains(@class, 'header-account-options')]");
+                    if (elem is null) return false;
+                    elem.Click();
+                }
+            } else {
+                elem = FindElementTimeout(5, x => driver.FindElementByXPath(x), "//div[contains(@class, 'header-account-options')]'");
+                if (elem is null) return false;
+                elem.Click();
+            }
 
-            IWebElement elem = FindElementTimeout(10, x => driver.FindElementById(x), "signIn");
+            elem = FindElementTimeout(10, x => driver.FindElementById(x), "signIn");
             if (elem is null) return false;
             Exceptions ex = TryInvokeElement(10, () => { elem.Click(); });
 
@@ -168,7 +178,7 @@ namespace Love_Bot.Sites {
             Product product = new Product();
             product.link = url;
 
-            IWebElement elem = FindElementTimeout(3, x => driver.FindElementByXPath(x), itemnameXpath);
+            IWebElement elem = FindElementTimeout(3, x => driver.FindElementByXPath(x), itemNameXpath);
             if (elem != null) {
                 product.name = elem.GetAttribute("innerText").Trim();
             }
@@ -182,8 +192,11 @@ namespace Love_Bot.Sites {
 
             elem = FindElementTimeout(1, x => driver.FindElementByXPath(x), itemButtonXpath);
             if (elem != null) {
-                product.button = elem.Text.ToLower();
-                AddToCartButton = elem;
+                Console.WriteLine(elem.GetAttribute("disabled") is null ? "enabled" : "disabled");
+                if (elem.GetAttribute("disabled") == null) {
+                    product.button = elem.Text.ToLower();
+                    AddToCartButton = elem;
+                }
             }
 
             return product;

@@ -121,6 +121,7 @@ namespace Love_Bot.Sites {
 
             WaitUntilStale(10, elem, () => { bool b = elem.Displayed || elem.Enabled; });
 
+            Console.WriteLine(name + ": login successful");
             return true;
         }
 
