@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Serilog;
 
 namespace Love_Bot {
     class Program {
@@ -13,6 +14,7 @@ namespace Love_Bot {
         private static Dictionary<string, Dictionary<string, string>> payment = new Dictionary<string, Dictionary<string, string>>();
         private static Dictionary<string, Tuple<Thread, Website>> threads = new Dictionary<string, Tuple<Thread, Website>>();
         private static int checkInterval = 30;
+        private static string baseDir = Directory.GetCurrentDirectory();
 
         private class Options {
             [Value(0)]
@@ -41,7 +43,19 @@ namespace Love_Bot {
             if (configs is null || payment is null) return;
             if (configs.Count == 0 || payment.Count == 0) return;
 
-            Console.WriteLine("success");
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .WriteTo.Console()
+                .WriteTo.File(baseDir + "/logs/main.log",
+                outputTemplate: "[{Timestamp:MM/dd/yyyy HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+                restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information,
+                rollingInterval: RollingInterval.Day)
+                .CreateLogger();
+
+            Log.Information("Hello");
+            Log.Debug("Hello");
+            Log.CloseAndFlush();
+            Console.ReadLine();
 
             foreach (KeyValuePair<string, WebsiteConfig> config in configs) {
                 Website site = GetWebsite(config.Key, config.Value);
@@ -63,7 +77,7 @@ namespace Love_Bot {
         }
 
         private static void CheckConfigs(string path) {
-            while (true) {
+            while (false) {
                 Thread.Sleep(checkInterval * 1000);
 
                 foreach(KeyValuePair<string, Tuple<Thread, Website>> kvp in threads) {
@@ -169,7 +183,7 @@ namespace Love_Bot {
 
             //    Console.WriteLine(c.Key + "\n" + c.Value);
             //}
-            File.Delete(path);
+            //File.Delete(path);
             return configs;
         }
 
@@ -187,7 +201,7 @@ namespace Love_Bot {
             //}
 
             //payment["billingInfo"].Select(i => $"{i.Key}: {i.Value}").ToList().ForEach(Console.WriteLine);
-            File.Delete(path);
+            //File.Delete(path);
             return payment;
         }
 
