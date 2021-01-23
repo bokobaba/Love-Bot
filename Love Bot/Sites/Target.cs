@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace Love_Bot.Sites {
     class Target : Website {
         private static readonly string
-            cartUrl = "https://www.target.com/co-cart",
+            checkoutUrl = "https://www.target.com/co-review",
             loginUrl = "https://www.target.com",
             itemNameXpath = "//h1[@data-test='product-title']",
             itemPriceXpath = "//div[@data-test='product-price']",
@@ -34,13 +34,54 @@ namespace Love_Bot.Sites {
 
         protected override bool AddToCart(string url, bool refresh = false) {
             Console.WriteLine(name + ": adding product to Target cart");
-            Console.ReadLine();
+            if (AddToCartButton is null) {
+                driver.Navigate().GoToUrl(url);
+
+                AddToCartButton = FindElementTimeout(5, x => driver.FindElementByXPath(x), itemButtonXpath);
+                if (AddToCartButton is null) return false;
+            }
+
+            Console.WriteLine(name + ": clicking ship it button");
+            if (TryInvokeElement(5, () => { AddToCartButton.Click(); }) != Exceptions.None)
+                return false;
+
+            FindElementTimeout(5, x => driver.FindElementByXPath(x), "//div[@class='ReactModal__Overlay ReactModal__Overlay--after-open']");
+
             return true;
         }
 
         protected override bool Checkout() {
             Console.WriteLine(name + ": checkout Target");
-            throw new NotImplementedException();
+
+            driver.Navigate().GoToUrl(checkoutUrl);
+
+            //Console.WriteLine(name + ": searching for save and continue button");
+            //IWebElement e = FindElementTimeout(5, x => driver.FindElementByXPath(x), "//button[@data-test='save-and-continue-button");
+            //if (e is null) return false;
+            //if (TryInvokeElement(5, () => { e.Click(); }) != Exceptions.None) return false;
+
+            //Console.WriteLine(name + ": entering cvv");
+            //IWebElement e = FindElementTimeout(5, x => driver.FindElementById(x), "creditCardInput-cvv");
+            //if (e is null) return false;
+            //if (TryInvokeElement(5, () => { e.SendKeys(Keys.Control + "a"); }) != Exceptions.None) return false;
+            //e.SendKeys(paymentInfo["paymentInfo"]["cvv"]);
+
+            //Console.WriteLine(name + ": searching for save and continue button");
+            //e = FindElementTimeout(5, x => driver.FindElementByXPath(x), "//button[contains(text(), 'Save and continue')]");
+            //if (e is null) return false;
+            //if (TryInvokeElement(5, () => { e.Click(); }) != Exceptions.None) return false;
+
+            Console.WriteLine(name + ": searching for place order button");
+            IWebElement e = FindElementTimeout(5, x => driver.FindElementByXPath(x), "//button[contains(text(), 'Place your order')]");
+            if (e is null) return false;
+
+            if (config.placeOrder) {
+                if (TryInvokeElement(5, () => { e.Click(); }) != Exceptions.None) return false;
+            } else {
+                Console.WriteLine(e.GetAttribute("innerText"));
+            }
+
+            return true;
         }
 
         protected override bool Login(string email, string password) {
