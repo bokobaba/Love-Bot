@@ -125,8 +125,6 @@ namespace Love_Bot.Sites {
                 response = ex.Response as HttpWebResponse;
             }
 
-            Console.WriteLine("web response = " + (response).StatusDescription);
-
             Stream responseStream = response.GetResponseStream();
 
             if (response.ContentEncoding?.IndexOf("gzip", StringComparison.InvariantCultureIgnoreCase) >= 0) {
@@ -140,7 +138,7 @@ namespace Love_Bot.Sites {
                 responseStream?.CopyTo(ms);
 
                 string htmlContent = Encoding.UTF8.GetString(ms.ToArray());
-                //Console.WriteLine(System.Xml.Linq.XElement.Parse(htmlContent).ToString());
+                //log.Information(System.Xml.Linq.XElement.Parse(htmlContent).ToString());
 
                 response.Close();
 

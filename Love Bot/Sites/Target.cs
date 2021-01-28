@@ -33,7 +33,7 @@ namespace Love_Bot.Sites {
         }
 
         protected override bool AddToCart(string url, bool refresh = false) {
-            Console.WriteLine(name + ": adding product to Target cart");
+            log.Information("adding product to Target cart");
             if (AddToCartButton is null) {
                 driver.Navigate().GoToUrl(url);
 
@@ -41,7 +41,7 @@ namespace Love_Bot.Sites {
                 if (AddToCartButton is null) return false;
             }
 
-            Console.WriteLine(name + ": clicking ship it button");
+            log.Information("clicking ship it button");
             if (TryInvokeElement(5, () => { AddToCartButton.Click(); }) != Exceptions.None)
                 return false;
 
@@ -51,49 +51,49 @@ namespace Love_Bot.Sites {
         }
 
         protected override bool Checkout() {
-            Console.WriteLine(name + ": checkout Target");
+            log.Information("checkout Target");
 
             driver.Navigate().GoToUrl(checkoutUrl);
 
-            //Console.WriteLine(name + ": searching for save and continue button");
+            //log.Information("searching for save and continue button");
             //IWebElement e = FindElementTimeout(5, x => driver.FindElementByXPath(x), "//button[@data-test='save-and-continue-button");
             //if (e is null) return false;
             //if (TryInvokeElement(5, () => { e.Click(); }) != Exceptions.None) return false;
 
-            //Console.WriteLine(name + ": entering cvv");
+            //log.Information("entering cvv");
             //IWebElement e = FindElementTimeout(5, x => driver.FindElementById(x), "creditCardInput-cvv");
             //if (e is null) return false;
             //if (TryInvokeElement(5, () => { e.SendKeys(Keys.Control + "a"); }) != Exceptions.None) return false;
             //e.SendKeys(paymentInfo["paymentInfo"]["cvv"]);
 
-            //Console.WriteLine(name + ": searching for save and continue button");
+            //log.Information("searching for save and continue button");
             //e = FindElementTimeout(5, x => driver.FindElementByXPath(x), "//button[contains(text(), 'Save and continue')]");
             //if (e is null) return false;
             //if (TryInvokeElement(5, () => { e.Click(); }) != Exceptions.None) return false;
 
-            Console.WriteLine(name + ": searching for place order button");
+            log.Information("searching for place order button");
             IWebElement e = FindElementTimeout(5, x => driver.FindElementByXPath(x), "//button[contains(text(), 'Place your order')]");
             if (e is null) return false;
 
             if (config.placeOrder) {
                 if (TryInvokeElement(5, () => { e.Click(); }) != Exceptions.None) return false;
             } else {
-                Console.WriteLine(e.GetAttribute("innerText"));
+                log.Information(e.GetAttribute("innerText"));
             }
 
             return true;
         }
 
         protected override bool Login(string email, string password) {
-            Console.WriteLine(name + ": login to Target");
+            log.Information("logging in to Target");
             driver.Navigate().GoToUrl(loginUrl);
 
-            Console.WriteLine(name + ": searching for account header");
+            log.Information("searching for account header");
             IWebElement elem = FindElementTimeout(5, x => driver.FindElementByXPath(x), "//span[@data-test='accountUserName']");
             if (elem is null) return false;
             elem.Click();
             if (!elem.GetAttribute("innerText").Equals("Sign in")) {
-                Console.WriteLine(name + ": signing out");
+                log.Information("signing out");
                 elem = FindElementTimeout(5, x => driver.FindElement(By.Id(x)), "accountNav-guestSignOut");
                 if (elem is null) return false;
                 Task.Delay(2000).Wait();
@@ -102,24 +102,24 @@ namespace Love_Bot.Sites {
                 Login(email, password);
             }
 
-            Console.WriteLine(name + ": searching for signin button");
+            log.Information("searching for signin button");
             elem = FindElementTimeout(5, x => driver.FindElement(By.Id(x)), "accountNav-signIn");
             if (elem is null) return false;
             Task.Delay(2000).Wait();
             elem.Click();
 
 
-            Console.WriteLine(name + ": entering email");
+            log.Information("entering email");
 
             elem = FindElementTimeout(5, x => driver.FindElementById(x), "username");
             if (elem != null) {
                 TryInvokeElement(5, () => { elem.SendKeys(Keys.Control + "a"); });
                 elem.SendKeys(email);
             } else {
-                Console.WriteLine(name + ": no username field found");
+                log.Information("no username field found");
             }
 
-            Console.WriteLine(name + ": entering password");
+            log.Information("entering password");
 
             elem = FindElementTimeout(5, x => driver.FindElementById(x), "password");
             if (elem is null) return false;
@@ -134,12 +134,12 @@ namespace Love_Bot.Sites {
             WaitUntilStale(5, elem, () => { bool b = elem.Displayed || elem.Enabled; });
 
 
-            Console.WriteLine(name + ": Login Successful");
+            log.Information("Login Successful");
             return true;
         }
 
         protected override Product ParseBrowser(string url) {
-            Console.WriteLine(name + ": checking Target");
+            log.Information("checking Target");
             AddToCartButton = null;
             driver.Navigate().GoToUrl(url);
             Product product = new Product();
@@ -153,7 +153,7 @@ namespace Love_Bot.Sites {
 
             elem = FindElementTimeout(1, x => driver.FindElementByXPath(x), itemPriceXpath);
             if (elem != null) {
-                //Console.WriteLine("price = [" + elem.GetAttribute("innerText") +  "]");
+                //log.Information("price = [" + elem.GetAttribute("innerText") +  "]");
                 float number;
                 product.price = float.TryParse(elem.GetAttribute("innerText"), style, culture, out number) ? number : Single.NaN;
             }

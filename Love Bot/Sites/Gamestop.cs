@@ -32,7 +32,7 @@ namespace Love_Bot.Sites {
         }
 
         protected override bool AddToCart(string url, bool refresh = false) {
-            Console.WriteLine(name + ": adding product to gamestop cart");
+            log.Information("adding product to gamestop cart");
             if (AddToCartButton is null) {
                 driver.Navigate().GoToUrl(url);
 
@@ -59,7 +59,7 @@ namespace Love_Bot.Sites {
         }
 
         protected override bool Checkout() {
-            Console.WriteLine(name + ": checkout gamestop");
+            log.Information("checkout gamestop");
             driver.Navigate().GoToUrl(checkouturl);
             //IWebElement e = FindElementTimeout(5, x => driver.FindElementById(x), "shippingAddressOne");
             //if (e is null) return false;
@@ -90,8 +90,8 @@ namespace Love_Bot.Sites {
             //IJavaScriptExecutor js = (IJavaScriptExecutor)driver;
             //js.ExecuteScript("window.scrollTo(0, document.body.scrollHeight)");
             //Thread.Sleep(2000);
-            //Console.WriteLine("trying to click");
-            //Console.WriteLine("enabled: " + e.Enabled + " visible: " + e.Displayed);
+            //log.Information("trying to click");
+            //log.Information("enabled: " + e.Enabled + " visible: " + e.Displayed);
             //Console.ReadLine();
             //if (TryInvokeElement(10, () => {
 
@@ -100,7 +100,7 @@ namespace Love_Bot.Sites {
 
             IWebElement e = FindElementTimeout(5, x => driver.FindElementById(x), "saved-payment-security-code");
             if (e is null) return false;
-            Console.WriteLine(name + ": entering cvv");
+            log.Information("entering cvv");
             if (TryInvokeElement(5, () => { e.SendKeys(Keys.Control + "a"); }) != Exceptions.None) return false;
             e.SendKeys(paymentInfo["paymentInfo"]["cvv"]);
 
@@ -110,7 +110,7 @@ namespace Love_Bot.Sites {
                 new OpenQA.Selenium.Interactions.Actions(driver).MoveToElement(e).Click(e).Perform();
             }) != Exceptions.None) return false;
 
-            Console.WriteLine(name + ": searching for place order button");
+            log.Information("searching for place order button");
             e = FindElementTimeout(5, x => driver.FindElementByXPath(x), "//button[@class='btn btn-primary btn-block place-order']");
             if (e is null) return false;
             if (config.placeOrder) {
@@ -119,7 +119,7 @@ namespace Love_Bot.Sites {
                 }) != Exceptions.None) return false;
                 WaitUntilStale(30, e, () => { bool b = e.Displayed || e.Enabled; });
             } else
-                Console.WriteLine(e.GetAttribute("value"));
+                log.Information(e.GetAttribute("value"));
 
             
 
@@ -127,7 +127,7 @@ namespace Love_Bot.Sites {
         }
 
         protected override bool Login(string email, string password) {
-            Console.WriteLine("logging into gamestop");
+            log.Information("logging into gamestop");
             driver.Navigate().GoToUrl(logouturl);
             Task.Delay(2000).Wait();
             driver.Navigate().GoToUrl(loginUrl);
@@ -150,13 +150,13 @@ namespace Love_Bot.Sites {
             if (elem is null) return false;
             Exceptions ex = TryInvokeElement(10, () => { elem.Click(); });
 
-            Console.WriteLine(name + ": searching for email field");
+            log.Information("searching for email field");
             elem = FindElementTimeout(5, x => driver.FindElementById(x), "login-form-email");
             if (elem is null) return false;
             ex = TryInvokeElement(10, () => { elem.SendKeys(Keys.Control + "a"); });
             elem.SendKeys(email);
 
-            Console.WriteLine(name + ": searching for password field");
+            log.Information("searching for password field");
             elem = FindElementTimeout(5, x => driver.FindElementById(x), "login-form-password");
             if (elem is null) return false;
             elem.SendKeys(Keys.Control + "a");
@@ -167,12 +167,12 @@ namespace Love_Bot.Sites {
             if (!WaitUntilStale(10, elem, () => { bool b = elem.Displayed; }))
                 return false;
 
-            Console.WriteLine(name + ": login successful");
+            log.Information("login successful");
             return true;
         }
 
         protected override Product ParseBrowser(string url) {
-            Console.WriteLine(name + ": checking gamestop");
+            log.Information("checking gamestop");
             AddToCartButton = null;
             driver.Navigate().GoToUrl(url);
             Product product = new Product();
@@ -185,14 +185,14 @@ namespace Love_Bot.Sites {
 
             elem = FindElementTimeout(1, x => driver.FindElementByXPath(x), itemPriceXpath);
             if (elem != null) {
-                //Console.WriteLine("price = [" + elem.GetAttribute("innerText") +  "]");
+                //log.Information("price = [" + elem.GetAttribute("innerText") +  "]");
                 float number;
                 product.price = float.TryParse(elem.GetAttribute("innerText"), style, culture, out number) ? number : Single.NaN;
             }
 
             elem = FindElementTimeout(1, x => driver.FindElementByXPath(x), itemButtonXpath);
             if (elem != null) {
-                Console.WriteLine(elem.GetAttribute("disabled") is null ? "enabled" : "disabled");
+                log.Information(elem.GetAttribute("disabled") is null ? "enabled" : "disabled");
                 if (elem.GetAttribute("disabled") == null) {
                     product.button = elem.Text.ToLower();
                     AddToCartButton = elem;

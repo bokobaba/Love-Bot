@@ -35,7 +35,7 @@ namespace Love_Bot.Sites {
         }
 
         protected override bool AddToCart(string url, bool refresh = false) {
-            Console.WriteLine(name + ": adding product to amazon cart");
+            log.Information("adding product to amazon cart");
 
             if (refresh)
                 driver.Navigate().GoToUrl(url);
@@ -62,10 +62,10 @@ namespace Love_Bot.Sites {
         }
         
         protected override bool Checkout() {
-            Console.WriteLine(name + ": checkout Amazon");
+            log.Information("checkout Amazon");
             //IReadOnlyCollection<IWebElement> popover = driver.FindElements(By.Id("a-popover-lgtbox"));
             //if (popover.Count > 0) {
-            //    Console.WriteLine(name + ": popup detected");
+            //    log.Information("popup detected");
             //    IWebElement iframe = FindElementTimeout(5, x => driver.FindElement(By.Id(x)),
             //    "turbo-checkout-iframe");
             //    if (iframe is null) return false;
@@ -77,7 +77,7 @@ namespace Love_Bot.Sites {
             //    if (config.placeOrder)
             //        e.Click();
             //    else
-            //        Console.WriteLine(e.GetAttribute("value"));
+            //        log.Information(e.GetAttribute("value"));
             //    return true;
             //}
             //else
@@ -102,21 +102,21 @@ namespace Love_Bot.Sites {
             }
             
             buyNow = false;
-            Console.WriteLine(name + ": searching for place order button");
+            log.Information("searching for place order button");
             IWebElement elem = FindElementTimeout(5, x => driver.FindElementByName(x), "placeYourOrder1");
             if (elem is null) return false;
             if (config.placeOrder) {
                 elem.Click();
                 WaitUntilStale(30, elem, () => { bool b = elem.Displayed || elem.Enabled; });
             } else {
-                Console.WriteLine(name + ": " + elem.GetAttribute("name"));
+                log.Information(elem.GetAttribute("name"));
             }
 
             return true;
         }
 
         protected override bool Login(string email, string password) {
-            Console.WriteLine(name + ": logging to amazon");
+            log.Information("logging to amazon");
             driver.Navigate().GoToUrl(loginUrl);
 
             IWebElement elem = FindElementTimeout(10, x => driver.FindElementById(x), "nav-link-accountList-nav-line-1");
@@ -124,7 +124,7 @@ namespace Love_Bot.Sites {
                 return false;
 
             if (!elem.GetAttribute("innerText").ToLower().Contains("sign in")) {
-                Console.WriteLine(name + ": trying to sign out of amazon");
+                log.Information("trying to sign out of amazon");
                 Actions action = new Actions(driver);
                 action.MoveToElement(elem).Perform();
 
@@ -133,14 +133,14 @@ namespace Love_Bot.Sites {
                     return false;
             }
             else {
-                Console.WriteLine(name + ": trying to sign in to amazon");
+                log.Information("trying to sign in to amazon");
                 if (TryInvokeElement(10, () => { elem.Click(); }) != Exceptions.None)
                     return false;
             }
 
             //Console.ReadLine();
             Task.Delay(1000).Wait();
-            Console.WriteLine(name + ": searching for email field");
+            log.Information("searching for email field");
 
             elem = FindElementTimeout(1, x => driver.FindElementById(x), "ap_email");
 
@@ -159,14 +159,14 @@ namespace Love_Bot.Sites {
             //elem.Click();
 
             Task.Delay(1000).Wait();
-            Console.WriteLine(name + ": searching for password field");
+            log.Information("searching for password field");
             elem = FindElementTimeout(5, x => driver.FindElementById(x), "ap_password");
             if (elem is null) return false;
 
             //elem = find_element_timeout(5, lambda: driver.find_element_by_id('password'),
             //                            'unable to find password element for login', False)
 
-            Console.WriteLine("entering password");
+            log.Information("entering password");
 
             elem.SendKeys(Keys.Control + "a");
             elem.SendKeys(password);
@@ -175,13 +175,13 @@ namespace Love_Bot.Sites {
 
             elem.SendKeys(Keys.Enter);
 
-            Console.WriteLine("Login Successful");
+            log.Information("Login Successful");
 
             return true;
         }
 
         protected override Product ParseNoBrowser(string url) {
-            Console.WriteLine(name + "checking amazon");
+            log.Information("checking amazon");
             buyNow = false;
             AddToCartButton = null;
             string html = WebsiteUtils.GetHtmlContent(url);
@@ -203,7 +203,7 @@ namespace Love_Bot.Sites {
 
             node = doc.DocumentNode.SelectSingleNode(itemPriceXpath);
             if (node != null) {
-                //Console.WriteLine("\n price:\n" + node.InnerText);
+                //log.Information("\n price:\n" + node.InnerText);
                 float number;
                 product.price = float.TryParse(node.InnerText, style, culture, out number) ? number : float.MaxValue;
             }
@@ -211,14 +211,14 @@ namespace Love_Bot.Sites {
             if ((doc.DocumentNode.SelectSingleNode(buyNowXpath)) == null) {
                 node = doc.DocumentNode.SelectSingleNode(itemButtonXpath);
                 if (node != null) {
-                    //Console.WriteLine(node.InnerText);
-                    //Console.WriteLine("\n button:\n" + node.Attributes["value"].Value);
+                    //log.Information(node.InnerText);
+                    //log.Information("\n button:\n" + node.Attributes["value"].Value);
                     product.button = node.Attributes["value"] == null ? "null" : node.Attributes["value"].Value;
                     //product.button = node.InnerText == null ? "null" : node.InnerText;
                 }
             }
             else {
-                //Console.WriteLine(node.InnerText);
+                //log.Information(node.InnerText);
                 product.button = "Buy Now";
                 buyNow = true;
             }
@@ -229,7 +229,7 @@ namespace Love_Bot.Sites {
         }
 
         protected override Product ParseBrowser(string url) {
-            Console.WriteLine(name + ": checking amazon");
+            log.Information("checking amazon");
             buyNow = false;
             AddToCartButton = null;
             driver.Navigate().GoToUrl(url);
@@ -243,7 +243,7 @@ namespace Love_Bot.Sites {
 
             elem = FindElementTimeout(1, x => driver.FindElementById(x), itemPriceId);
             if (elem != null) {
-                //Console.WriteLine("price = [" + elem.GetAttribute("innerText") +  "]");
+                //log.Information("price = [" + elem.GetAttribute("innerText") +  "]");
                 float number;
                 product.price = float.TryParse(elem.GetAttribute("innerText"), style, culture, out number) ? number : Single.NaN;
             }

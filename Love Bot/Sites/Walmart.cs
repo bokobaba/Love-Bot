@@ -28,7 +28,7 @@ namespace Love_Bot.Sites {
             : base(name, config, cred) { }
 
         protected override Product ParseNoBrowser(string url) {
-            Console.WriteLine(name + ": checking walmart");
+            log.Information("checking walmart");
             AddToCartButton = null;
             string html = WebsiteUtils.GetHtmlContent(url);
             HtmlDocument doc = new HtmlDocument();
@@ -45,22 +45,20 @@ namespace Love_Bot.Sites {
             HtmlNode node = doc.DocumentNode.SelectSingleNode(itemNameXpath);
 
             if (node != null) {
-                //Console.WriteLine("\n name:\n" + node.InnerText);
+                //log.Information("\n name:\n" + node.InnerText);
                 product.name = node.InnerText == null ? "null" : node.InnerText;
             }
             
             node = doc.DocumentNode.SelectSingleNode(itemPriceXpath);
             if (node != null) {
-                //Console.WriteLine("\n price:\n" + node.InnerText);
+                //log.Information("\n price:\n" + node.InnerText);
                 float number;
                 product.price = float.TryParse(node.InnerText, style, culture, out number) ? number : float.MaxValue;
             }
             
             node = doc.DocumentNode.SelectSingleNode(itemButtonXpath2);
-            Console.WriteLine("inner = " + node.InnerHtml);
             if (node != null) {
-                Console.WriteLine("inner text = " + node.InnerHtml);
-                //Console.WriteLine("\n button:\n" + node.Attributes["value"].Value);
+                //log.Information("\n button:\n" + node.Attributes["value"].Value);
                 //product.button = node.Attributes["value"] == null ? "null" : node.Attributes["value"].Value;
                 product.button = node.InnerText == null ? "null" : node.InnerText.ToLower();
             }
@@ -71,7 +69,7 @@ namespace Love_Bot.Sites {
         }
 
         protected override Product ParseBrowser(string url) {
-            Console.WriteLine(name + ": checking walmart");
+            log.Information("checking walmart");
             AddToCartButton = null;
             driver.Navigate().GoToUrl(url);
             Product product = new Product();
@@ -82,21 +80,21 @@ namespace Love_Bot.Sites {
                 product.name = elem.GetAttribute("innerText").Trim();
             } else {
                 if (driver.Url.ToLower().Contains("blocked")) {
-                    Console.WriteLine("captcha detected press enter when solved");
+                    log.Warning("captcha detected press enter when solved");
                     Console.ReadLine();
                 }
             }
 
             elem = FindElementTimeout(1, x => driver.FindElementByXPath(x), itemPriceXpath);
             if (elem != null) {
-                //Console.WriteLine("price = [" + elem.GetAttribute("innerText") +  "]");
+                //log.Information("price = [" + elem.GetAttribute("innerText") +  "]");
                 float number;
                 product.price = float.TryParse(elem.GetAttribute("innerText"), style, culture, out number) ? number : float.MaxValue;
             }
 
             elem = FindElementTimeout(1, x => driver.FindElementByXPath(x), itemButtonXpath2);
             if (elem != null) {
-                Console.WriteLine("setting button");
+                log.Information("setting button");
                 product.button = elem.GetAttribute("innerText").ToLower();
                 AddToCartButton = elem;
             }
@@ -105,7 +103,7 @@ namespace Love_Bot.Sites {
         }
 
         protected override bool AddToCart(string url, bool refresh = false) {
-            Console.WriteLine(name + ": adding product to walmart cart");
+            log.Information("adding product to walmart cart");
 
             if (refresh)
                 driver.Navigate().GoToUrl(url);
@@ -122,11 +120,11 @@ namespace Love_Bot.Sites {
             catch (Exception ex) {
                 try {
                     IWebElement captcha = driver.FindElementById("px-captcha");
-                    Console.WriteLine(name + ": captcha detected.  press Enter when solved");
+                    log.Warning("captcha detected.  press Enter when solved");
                     Console.ReadLine();
                     return AddToCart(url);
                 } catch (NoSuchElementException e) {
-                    Console.WriteLine(name + ": no captcha detected");
+                    log.Warning("no captcha detected");
                 }
             }
             return false;
@@ -134,46 +132,46 @@ namespace Love_Bot.Sites {
 
         protected override bool Checkout() {
 
-            Console.WriteLine(name + ": checkout Walmart");
+            log.Information("checkout Walmart");
 
             driver.Navigate().GoToUrl(checkoutUrl);
 
             IWebElement bttn;
 
-            Console.WriteLine(name + ": searching for continue button");
+            log.Information("searching for continue button");
             try {
                 bttn = FindElementTimeout(10, x => driver.FindElementByXPath(x),
                 "//span[contains(text(), 'Continue')]");
                 TryInvokeElement(5, () => { bttn.Click(); });
                 WaitUntilStale(5, bttn, () => { bool b = bttn.Displayed || bttn.Enabled; });
             } catch (Exception ex) {
-                Console.WriteLine(ex.Message);
+                log.Information(ex.Message);
                 try {
                     IWebElement captcha = driver.FindElementById("px-captcha");
-                    Console.WriteLine(name + ": captcha detected.  press Enter when solved");
+                    log.Warning("captcha detected.  press Enter when solved");
                     Console.ReadLine();
                     return Checkout();
                 } catch (Exception e) {
-                    Console.WriteLine(e.Message);
-                    Console.WriteLine(name + ": no captcha found");
+                    log.Warning(e.Message);
+                    log.Warning("no captcha found");
                 }
 
             }
 
-            Console.WriteLine(name + ": searching for next continue button");
+            log.Information("searching for next continue button");
             bttn = FindElementTimeout(1, x => driver.FindElementByXPath(x),
                 "//button[@class='button button--primary']");
             if (bttn != null) {
                 if (TryInvokeElement(5, () => { bttn.Click(); }) != Exceptions.None) return false;
 
-                Console.WriteLine(name + ": entering cvv");
+                log.Information("entering cvv");
                 bttn = FindElementTimeout(5, x => driver.FindElementById(x), "cvv-confirm");
                 if (bttn is null) return false;
                 bttn.SendKeys(Keys.Control + "a");
                 bttn.SendKeys(paymentInfo["paymentInfo"]["cvv"]);
                 bttn.SendKeys(Keys.Enter);
             } else {
-                Console.WriteLine(name + ": continue button not found");
+                log.Information("continue button not found");
             }
 
 
@@ -188,7 +186,7 @@ namespace Love_Bot.Sites {
                 bttn.Click();
                 WaitUntilStale(30, bttn, () => { bool b = bttn.Displayed || bttn.Enabled; });
             } else
-                Console.WriteLine(name + ": " + bttn.GetAttribute("innerText"));
+                log.Information(bttn.GetAttribute("innerText"));
 
             //# radio = find_element_timeout(5, lambda: driver.find_element(
             //# By.CSS_SELECTOR, "[id^=fulfillment-shipping]"))
@@ -200,12 +198,11 @@ namespace Love_Bot.Sites {
         }
 
         protected override bool Login(string email, string password) {
-            Console.WriteLine(name + ": login to walmart");
+            log.Information("login to walmart");
             Task.Delay(500).Wait();
-            Console.WriteLine(name + ": going to login url");
             driver.Navigate().GoToUrl(loginUrl);
 
-            Console.WriteLine(name + ": entering email");
+            log.Information("entering email");
 
             IWebElement elem = FindElementTimeout(5, x => driver.FindElementById(x), "email");
             if (elem is null) return false;
@@ -213,7 +210,7 @@ namespace Love_Bot.Sites {
             TryInvokeElement(5, () => { elem.SendKeys(Keys.Control + "a"); });
             elem.SendKeys(email);
 
-            Console.WriteLine(name + ": entering password");
+            log.Information("entering password");
 
             elem = FindElementTimeout(5, x => driver.FindElementById(x), "password");
             if (elem is null) return false;
@@ -227,12 +224,12 @@ namespace Love_Bot.Sites {
 
             WaitUntilStale(5, elem, () => { bool b = elem.Displayed || elem.Enabled; });
             if (driver.Url.ToLower().Contains("account/login") || driver.Url.ToLower().Contains("blocked")) {
-                Console.WriteLine(name + "capcha detected press enter when solved");
+                log.Warning("capcha detected press enter when solved");
                 Console.ReadLine();
             }
             
 
-            Console.WriteLine(name + ": Login Successful");
+            log.Information("Login Successful");
             return true;
         }
     }

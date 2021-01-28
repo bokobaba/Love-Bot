@@ -1,5 +1,6 @@
 ﻿using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -12,18 +13,18 @@ namespace Love_Bot.Sites {
         private int purchases = 0;
         private bool searching = false;
         private bool loggingin = false;
-        public Task searchTask, loginTask;
 
+        public Task searchTask, loginTask;
         public string name;
         public WebsiteConfig config;
         public Dictionary<string, Dictionary<string, string>> paymentInfo;
         public CancellationTokenSource abort;
-        //public bool abort = false;
 
         protected ChromeDriver driver;
         protected NumberStyles style = NumberStyles.Number | NumberStyles.AllowCurrencySymbol;
         protected CultureInfo culture = CultureInfo.CreateSpecificCulture("en-US");
         protected IWebElement AddToCartButton;
+        protected readonly ILogger log;
 
         protected abstract string AddToCartText {
             get;
@@ -54,6 +55,14 @@ namespace Love_Bot.Sites {
             this.name = name;
             this.config = config;
             paymentInfo = payment;
+            log = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .WriteTo.Console()
+                .WriteTo.File(Program.baseDir + "/logs/" + name + "/" + name + ".log",
+                outputTemplate: "[{Timestamp:MM/dd/yyyy HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+                restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information,
+                rollingInterval: RollingInterval.Day)
+                .CreateLogger();
         }
 
         public class Product {
@@ -79,15 +88,16 @@ namespace Love_Bot.Sites {
         }
 
         public virtual void UpdateConfigs(WebsiteConfig newConfig) {
-            Console.WriteLine(name + ": updating config");
+            log.Information("updating config");
             config.Update(newConfig);
         }
 
         public async Task Run() {
-            Console.WriteLine(name + " is running");
+            log.Information("bot is now running");
             if (config.urls.Length < 1) {
-                Console.WriteLine(name + ": no urls");
+                log.Error("no urls provided");
                 End();
+                return;
             }
             if (config.loadBrowserOnStart) {
                 driver = InitDriver();
@@ -138,15 +148,15 @@ namespace Love_Bot.Sites {
         }
 
         private void End() {
-            Console.WriteLine("bot: " + name + " has exited");
+            log.Information("bot has finished running");
         }
 
         private async Task Search() {
             //if (abort) return;
             while (!abort.IsCancellationRequested) {
-                //Console.WriteLine("starting search: " + DateTime.Now);
+                //log.Information("starting search: " + DateTime.Now);
                 await Task.Delay(TimeSpan.FromSeconds(config.delay), abort.Token).ContinueWith(tsk => { });
-                //Console.WriteLine("ending search: " + DateTime.Now);
+                //log.Information("ending search: " + DateTime.Now);
                 while ((searching || loggingin) && !abort.IsCancellationRequested) { }
                 searching = true;
                 foreach (string url in config.urls) {
@@ -155,7 +165,7 @@ namespace Love_Bot.Sites {
                     if (VerifyProduct(product)) {
                         PurchaseItem(product);
                         if (purchases < config.maxPurchases) {
-                            Console.WriteLine(name + ": restarting browser");
+                            log.Information("restarting browser");
                             driver.Dispose();
                             driver = InitDriver();
                             if (config.stayLoggedIn)
@@ -177,9 +187,9 @@ namespace Love_Bot.Sites {
         private async Task StayLoggedIn() {
             //if (abort) return;
             while (!abort.IsCancellationRequested) {
-                //Console.WriteLine("starting login: " + DateTime.Now);
+                //log.Information("starting login: " + DateTime.Now);
                 await Task.Delay(TimeSpan.FromSeconds(config.loginInterval), abort.Token).ContinueWith(tsk => { });
-                //Console.WriteLine("ending login: " + DateTime.Now);
+                //log.Information("ending login: " + DateTime.Now);
                 while ((searching || loggingin) && !abort.IsCancellationRequested) { }
                 if (abort.IsCancellationRequested) break;
                 loggingin = true;
@@ -192,7 +202,7 @@ namespace Love_Bot.Sites {
         }
 
         private ChromeDriver InitDriver() {
-            Console.WriteLine(name + ": starting browser");
+            log.Information("starting browser");
             ChromeOptions options = new ChromeOptions();
             options.AddArgument("--ignore-certificate-errors");
             options.AddArgument("--ignore-certificate-errors-spki-list");
@@ -212,14 +222,13 @@ namespace Love_Bot.Sites {
 
             Random r = new Random();
             string agent = userAgents[r.Next(0, userAgents.Count - 1)];
-            Console.WriteLine(name + ": useragent = " + agent);
+            log.Information("USERAGENT = " + agent);
             options.AddArgument("--user-agent=" + agent);
 
             options.Proxy = null;
 
             string loc = System.IO.Directory.GetCurrentDirectory();
             //loc = loc.Substring(0, loc.LastIndexOf(@"\") + 1);
-            Console.WriteLine("current directory = " + loc);
             //Console.ReadLine();
 
             ChromeDriver driver = new ChromeDriver(loc, options);
@@ -230,21 +239,21 @@ namespace Love_Bot.Sites {
         }
 
         protected bool VerifyProduct(Product product) {
-            Console.WriteLine(name + ": verifying: " + product);
+            log.Information("verifying: " + product);
             if (!AddToCartText.Contains(product.button)) {
-                Console.WriteLine(name + ": purchase button not found");
+                log.Information("purchase button not found");
                 return false;
             }
             if (config.maxPrice > 0 && (product.price > config.maxPrice || float.IsNaN(product.price))) {
-                Console.WriteLine(name + ": price match failed");
+                log.Information("price match failed");
                 return false;
             }
-            Console.WriteLine(name + ": product match");
+            log.Information("product match");
             return true;
         }
 
         private void PurchaseItem(Product product) {
-            Console.WriteLine(name + ": trying to purchase");
+            log.Information("trying to purchase");
             int attempts = 1;
             Stopwatch watch = new Stopwatch();
             watch.Start();
@@ -252,16 +261,16 @@ namespace Love_Bot.Sites {
             if (driver is null)
                 driver = InitDriver();
 
-            Console.WriteLine(name + ": purchase attempt " + attempts++);
+            log.Information("purchase attempt " + attempts++);
         
             if (!config.stayLoggedIn) {
                 AddToCartButton = null;
                 while (!Login(config.login[0], config.login[1])) {
                     if (abort.IsCancellationRequested) return;
-                    Console.WriteLine(name + ": login failed");
-                    if (attempts - 1 > config.checkoutAttempts)
+                    log.Information("login failed");
+                    if (attempts - 1 >= config.checkoutAttempts)
                         return;
-                    Console.WriteLine(name + ": purchase attempt " + attempts++);
+                    log.Information("purchase attempt " + attempts++);
                 }
             }
 
@@ -269,30 +278,30 @@ namespace Love_Bot.Sites {
             while (!AddToCart(product.link, AddToCartButton is null || attempts > refresh)) {
                 if (abort.IsCancellationRequested) return;
                 AddToCartButton = null;
-                Console.WriteLine(name + ": add to cart failed");
-                if (attempts - 1 > config.checkoutAttempts)
+                log.Information("add to cart failed");
+                if (attempts - 1 >= config.checkoutAttempts)
                     return;
-                Console.WriteLine(name + ": purchase attempt" + attempts++);
+                log.Information("purchase attempt" + attempts++);
             }
 
             while (!Checkout()) {
                 if (abort.IsCancellationRequested) return;
-                Console.WriteLine(name + ": checkout failed");
-                if (attempts - 1 > config.checkoutAttempts)
+                log.Information("checkout failed");
+                if (attempts - 1 >= config.checkoutAttempts)
                     return;
-                Console.WriteLine(name + ": purchase attempt " + attempts++);
+                log.Information("purchase attempt " + attempts++);
             }
 
-            Console.WriteLine(name + ": product checkout success");
+            log.Information("product checkout success");
 
             purchases++;
 
             //if (config.stayLoggedIn || Login(config.login[0], config.login[1])) {
             //    while (attempts < 5 && !abort) {
-            //        Console.WriteLine(name + ": checkout attempt: " + ++attempts);
+            //        log.Information("checkout attempt: " + ++attempts);
             //        while (!AddToCart(product.link, attempts++ > 1)) {
             //            while (!Checkout()) {
-            //                Console.WriteLine(name + ": product checkout success");
+            //                log.Information("product checkout success");
             //                ++purchases;
             //                break;
             //            }
@@ -303,7 +312,7 @@ namespace Love_Bot.Sites {
             TimeSpan ts = watch.Elapsed;
             string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
             ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
-            Console.WriteLine(name + ": Checkout time: " + elapsedTime);
+            log.Information("CHECKOUT TIME: " + elapsedTime);
         }
 
 
@@ -318,9 +327,9 @@ namespace Love_Bot.Sites {
                 } catch (StaleElementReferenceException) {
                     break;
                 } catch (NoSuchElementException) {
-                    //Console.WriteLine(s + ": no such element exception");
+                    //log.Information(s + ": no such element exception");
                 } catch (Exception ex) {
-                    //Console.WriteLine(s + ex);
+                    //log.Information(s + ex);
                 }
 
             }
@@ -337,7 +346,7 @@ namespace Love_Bot.Sites {
                 } catch (ElementClickInterceptedException) {
                     return Exceptions.ElementClickIntercepted;
                 } catch (ElementNotInteractableException) {
-                    //Console.WriteLine("not interactable");
+                    //log.Information("not interactable");
                     continue;
                 } catch (NoSuchElementException) {
                     continue;

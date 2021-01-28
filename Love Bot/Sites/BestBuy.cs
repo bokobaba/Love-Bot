@@ -35,7 +35,7 @@ namespace Love_Bot.Sites {
         }
 
         protected override bool AddToCart(string url, bool refresh = false) {
-            Console.WriteLine(name + ": adding product to Bestbuy cart");
+            log.Information("adding product to Bestbuy cart");
 
             if (refresh) {
                 driver.Navigate().GoToUrl(url);
@@ -50,16 +50,16 @@ namespace Love_Bot.Sites {
         }
 
         protected override bool Checkout() {
-            Console.WriteLine(name + ": checkout Bestbuy");
+            log.Information("checkout Bestbuy");
 
             driver.Navigate().GoToUrl(cartUrl);
 
-            Console.WriteLine(name + ": searching for shipping radio");
+            log.Information("searching for shipping radio");
             IWebElement elem = FindElementTimeout(5, x => driver.FindElementByXPath(x), "//input[contains(@id, 'shipping')]");
             if (elem is null) return false;
             elem.Click();
 
-            Console.WriteLine(name + ": searching for checkout button");
+            log.Information("searching for checkout button");
             elem = FindElementTimeout(5, x => driver.FindElementByXPath(x),
                 "//button[@class='btn btn-lg btn-block btn-primary']");
             if (elem is null) return false;
@@ -68,12 +68,12 @@ namespace Love_Bot.Sites {
 
             elem = FindElementTimeout(2, x => driver.FindElementById(x), "credit-card-cvv");
             if (elem != null) {
-                Console.WriteLine(name + ": entering cvv");
+                log.Information("entering cvv");
                 elem.SendKeys(Keys.Control + "a");
                 elem.SendKeys(paymentInfo["paymentInfo"]["cvv"]);
             }
 
-            Console.WriteLine(name + ": searcing for place order button");
+            log.Information("searcing for place order button");
             elem = FindElementTimeout(5, x => driver.FindElementByXPath(x), 
                 "//button[@class='btn btn-lg btn-block btn-primary button__fast-track']");
             if (elem is null) return false;
@@ -85,24 +85,24 @@ namespace Love_Bot.Sites {
 
             }
             else
-                Console.WriteLine(elem.GetAttribute("innerText"));
+                log.Information(elem.GetAttribute("innerText"));
 
             return true;
         }
 
         protected override bool Login(string email, string password) {
-            Console.WriteLine(name + ": login to Bestbuy");
+            log.Information("logging in to Bestbuy");
             //Task.Delay(2000).Wait();
             driver.Navigate().GoToUrl(loginUrl);
 
             Task.Delay(1000).Wait();
 
-            Console.WriteLine(name + ": finding email field");
+            log.Information("finding email field");
 
             IWebElement elem = FindElementTimeout(5, x => driver.FindElementById(x), "fld-e");
             if (elem is null) return false;
 
-            Console.WriteLine(name + ": entering email");
+            log.Information("entering email");
 
             elem.SendKeys(Keys.Control + "a");
             elem.SendKeys(email);
@@ -110,7 +110,7 @@ namespace Love_Bot.Sites {
             elem = FindElementTimeout(5, x => driver.FindElementById(x), "fld-p1");
             if (elem is null) return false;
 
-            Console.WriteLine(name + ": entering password");
+            log.Information("entering password");
 
             elem.SendKeys(Keys.Control + "a");
             elem.SendKeys(password);
@@ -121,12 +121,12 @@ namespace Love_Bot.Sites {
 
             WaitUntilStale(10, elem, () => { bool b = elem.Displayed || elem.Enabled; });
 
-            Console.WriteLine(name + ": login successful");
+            log.Information("login successful");
             return true;
         }
 
         protected override Product ParseBrowser(string url) {
-            Console.WriteLine(name + ": checking Bestbuy");
+            log.Information("checking Bestbuy");
             AddToCartButton = null;
             driver.Navigate().GoToUrl(url);
             Product product = new Product();
@@ -139,7 +139,7 @@ namespace Love_Bot.Sites {
 
             elem = FindElementTimeout(1, x => driver.FindElementByXPath(x), itemPriceXpath);
             if (elem != null) {
-                //Console.WriteLine("price = [" + elem.GetAttribute("innerText") +  "]");
+                //log.Information("price = [" + elem.GetAttribute("innerText") +  "]");
                 float number;
                 product.price = float.TryParse(elem.GetAttribute("innerText"), style, culture, out number) ? number : Single.NaN;
             }

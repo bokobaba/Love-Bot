@@ -7,6 +7,11 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Serilog;
+using Microsoft.AspNetCore;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using System.Net;
+using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Hosting;
 
 namespace Love_Bot {
     class Program {
@@ -14,7 +19,8 @@ namespace Love_Bot {
         private static Dictionary<string, Dictionary<string, string>> payment = new Dictionary<string, Dictionary<string, string>>();
         private static Dictionary<string, Tuple<Thread, Website>> threads = new Dictionary<string, Tuple<Thread, Website>>();
         private static int checkInterval = 30;
-        private static string baseDir = Directory.GetCurrentDirectory();
+        private static ILogger log;
+        public static string baseDir = Directory.GetCurrentDirectory();
 
         private class Options {
             [Value(0)]
@@ -26,8 +32,20 @@ namespace Love_Bot {
         }
 
         private static void Main(string[] args) {
+            CreateHostBuilder(args).Build().Run();
+            return;
+
+            log = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .WriteTo.Console()
+                .WriteTo.File(baseDir + "/logs/main.log",
+                outputTemplate: "[{Timestamp:MM/dd/yyyy HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+                restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information,
+                rollingInterval: RollingInterval.Day)
+                .CreateLogger();
+
             if (args.Length < 2 || args.Length > 3)
-                Console.WriteLine("usage: [-t print_template] LoveBot path/to/config.json path/to/payment.json");
+                log.Information("usage: [-t print_template] LoveBot path/to/config.json path/to/payment.json");
 
             Parser.Default.ParseArguments<Options>(args)
                 .WithParsed<Options>(o => {
@@ -38,24 +56,10 @@ namespace Love_Bot {
                     configs = LoadConfig(o.configPath);
                     payment = LoadPaymentInfo(o.paymentPath);
                 }).WithNotParsed<Options>(e => {
-                    Console.WriteLine("usage: [-t print_template] LoveBot path/to/config.json path/to/payment.json");
+                    log.Information("usage: [-t print_template] LoveBot path/to/config.json path/to/payment.json");
                 });
             if (configs is null || payment is null) return;
             if (configs.Count == 0 || payment.Count == 0) return;
-
-            Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Debug()
-                .WriteTo.Console()
-                .WriteTo.File(baseDir + "/logs/main.log",
-                outputTemplate: "[{Timestamp:MM/dd/yyyy HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
-                restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information,
-                rollingInterval: RollingInterval.Day)
-                .CreateLogger();
-
-            Log.Information("Hello");
-            Log.Debug("Hello");
-            Log.CloseAndFlush();
-            Console.ReadLine();
 
             foreach (KeyValuePair<string, WebsiteConfig> config in configs) {
                 Website site = GetWebsite(config.Key, config.Value);
@@ -67,8 +71,14 @@ namespace Love_Bot {
             new Thread(() => CheckConfigs(args[0])).Start();
         }
 
+        public static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args).ConfigureWebHostDefaults(webBuilder => {
+                webBuilder.UseStartup<LoveBot.Startup>();
+            });
+
+
         private static void CreateBotThread(string name, Website site) {
-            Console.WriteLine("creating bot: " + name);
+            log.Information("creating bot: " + name);
             site.abort = new CancellationTokenSource();
             Thread thread = new Thread(async () => await site.Run());
             thread.Name = name;
@@ -81,14 +91,14 @@ namespace Love_Bot {
                 Thread.Sleep(checkInterval * 1000);
 
                 foreach(KeyValuePair<string, Tuple<Thread, Website>> kvp in threads) {
-                    if (kvp.Value.Item2.searchTask.IsCompleted) {
-                        Console.WriteLine("removing thread: " + kvp.Value.Item1.Name);
+                    if (kvp.Value.Item2.searchTask.IsCompleted || !kvp.Value.Item1.IsAlive) {
+                        log.Information("removing thread: " + kvp.Value.Item1.Name);
                         kvp.Value.Item2.abort.Cancel();
                         threads.Remove(kvp.Key);
                     }
                 }
 
-                Console.WriteLine("checking config file");
+                log.Information("checking config file");
 
                 if (!File.Exists(path)) continue;
 
@@ -102,7 +112,7 @@ namespace Love_Bot {
                     if (threads.ContainsKey(name)) {
                         Tuple<Thread, Website> t = threads[name];
                         if (!newConfigs.Keys.Contains(name)) {
-                            Console.WriteLine("removing bot: " + name);
+                            log.Information("removing bot: " + name);
                             t.Item2.abort.Cancel();
                             threads.Remove(name);
                         }
@@ -113,10 +123,10 @@ namespace Love_Bot {
 
                 foreach (KeyValuePair<string, WebsiteConfig> config in configs) {
                     if (threads.ContainsKey(config.Key)) {
-                        Console.WriteLine("updating bot: " + config.Key);
+                        log.Information("updating bot: " + config.Key);
                         Website w = threads[config.Key].Item2;
                         w.UpdateConfigs(config.Value);
-                        Console.WriteLine("done");
+                        log.Information("done");
                     }
                     else {
                         Website site = GetWebsite(config.Key, config.Value);
@@ -135,12 +145,12 @@ namespace Love_Bot {
             try {
                 site = new Uri(config.urls[0]).Host;
             } catch (Exception ex) {
-                Console.WriteLine(ex.Message);
+                log.Information(ex.Message);
                 return null;
             }
             for (int i = 0; i < config.urls.Length; ++i) {
                 if (!site.Equals(new Uri(config.urls[i]).Host)) {
-                    Console.WriteLine(name + ": all urls must use same domain");
+                    log.Information("all urls must use same domain");
                     return null;
                 }
             }
@@ -160,7 +170,7 @@ namespace Love_Bot {
                 return new Target(name, config, payment);
             }
             else {
-                Console.WriteLine(site + " is not supported");
+                log.Information(site + " is not supported");
                 return null;
             }
         }
@@ -171,17 +181,17 @@ namespace Love_Bot {
                 configs = JsonConvert.DeserializeObject<Dictionary<string, WebsiteConfig>>(File.ReadAllText(path));
             }
             catch (Exception ex) {
-                Console.WriteLine(ex.Message);
+                log.Information(ex.Message);
                 return null;
             }
-            //Console.WriteLine("length = " + configs.Count);
+            //log.Information("length = " + configs.Count);
             //foreach (KeyValuePair<string, WebsiteConfig> c in configs) {
             //    if (c.Value.login.Length < 2) {
-            //        Console.WriteLine("invalid number of login parameters for " + c.Key);
+            //        log.Information("invalid number of login parameters for " + c.Key);
             //        configs.Remove(c.Key);
             //    }
 
-            //    Console.WriteLine(c.Key + "\n" + c.Value);
+            //    log.Information(c.Key + "\n" + c.Value);
             //}
             //File.Delete(path);
             return configs;
@@ -193,20 +203,20 @@ namespace Love_Bot {
                 payment = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, string>>>(File.ReadAllText(path));
             }
             catch (Exception ex) {
-                Console.WriteLine(ex.Message);
+                log.Information(ex.Message);
                 return null;
             }
             //foreach (Dictionary<string, string> d in payment.Values) {
-            //    d.Select(i => $"{i.Key}: {i.Value}").ToList().ForEach(Console.WriteLine);
+            //    d.Select(i => $"{i.Key}: {i.Value}").ToList().ForEach(log.Information);
             //}
 
-            //payment["billingInfo"].Select(i => $"{i.Key}: {i.Value}").ToList().ForEach(Console.WriteLine);
+            //payment["billingInfo"].Select(i => $"{i.Key}: {i.Value}").ToList().ForEach(log.Information);
             //File.Delete(path);
             return payment;
         }
 
         private static void CreateTemplate(string configPath, string paymentPath) {
-            Console.WriteLine("generating templates for " + configPath + " and " + paymentPath);
+            log.Information("generating templates for " + configPath + " and " + paymentPath);
             try {
                 File.WriteAllText(configPath, JsonConvert.SerializeObject(
                     new Dictionary<string, WebsiteConfig>() {
@@ -214,7 +224,7 @@ namespace Love_Bot {
                     { "botName2", new WebsiteConfig() }}, Formatting.Indented));
             }
             catch (Exception ex) {
-                Console.WriteLine(ex.Message);
+                log.Information(ex.Message);
                 return;
             }
 
@@ -258,7 +268,7 @@ namespace Love_Bot {
                 }}, Formatting.Indented));
             }
             catch (Exception ex) {
-                Console.WriteLine(ex.Message);
+                log.Information(ex.Message);
                 return;
             }
         }
