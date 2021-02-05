@@ -71,7 +71,7 @@ namespace Love_Bot.Sites {
         protected override Product ParseBrowser(string url) {
             log.Information("checking walmart");
             AddToCartButton = null;
-            driver.Navigate().GoToUrl(url);
+            GoToUrl(url);
             Product product = new Product();
             product.link = url;
 
@@ -106,7 +106,7 @@ namespace Love_Bot.Sites {
             log.Information("adding product to walmart cart");
 
             if (refresh)
-                driver.Navigate().GoToUrl(url);
+                GoToUrl(url);
 
             try {
                 if (AddToCartButton is null) {
@@ -134,7 +134,7 @@ namespace Love_Bot.Sites {
 
             log.Information("checkout Walmart");
 
-            driver.Navigate().GoToUrl(checkoutUrl);
+            GoToUrl(checkoutUrl);
 
             IWebElement bttn;
 
@@ -200,7 +200,7 @@ namespace Love_Bot.Sites {
         protected override bool Login(string email, string password) {
             log.Information("login to walmart");
             Task.Delay(500).Wait();
-            driver.Navigate().GoToUrl(loginUrl);
+            GoToUrl(loginUrl);
 
             log.Information("entering email");
 

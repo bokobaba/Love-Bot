@@ -101,10 +101,12 @@ namespace Love_Bot.Sites {
             }
             if (config.loadBrowserOnStart) {
                 driver = InitDriver();
-                //driver.Navigate().GoToUrl(config.urls[0]);
+                //GoToUrl(config.urls[0]);
             }
             if (driver != null && config.stayLoggedIn)
-                Login(config.login[0], config.login[1]);
+                while (!Login(config.login[0], config.login[1])) {
+                    log.Warning("login failed...trying again");
+                }
 
             Task.Run(() => startTasks()).Wait();
         }
@@ -371,6 +373,21 @@ namespace Love_Bot.Sites {
             }
 
             return false;
+        }
+
+        protected void GoToUrl(string url) {
+            if (driver is null) {
+                driver = InitDriver();
+                GoToUrl(url);
+            }
+            try {
+                driver.Navigate().GoToUrl(url);
+            } catch(WebDriverException ex) {
+                log.Error(ex.Message);
+                driver.Dispose();
+                driver = InitDriver();
+                driver.Navigate().GoToUrl(url);
+            }
         }
 
         protected abstract Product ParseNoBrowser(string url);

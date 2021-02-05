@@ -38,7 +38,7 @@ namespace Love_Bot.Sites {
             log.Information("adding product to amazon cart");
 
             if (refresh)
-                driver.Navigate().GoToUrl(url);
+                GoToUrl(url);
 
             if (AddToCartButton is null) {
                 AddToCartButton = FindElementTimeout(5, x => driver.FindElementById(x),
@@ -83,7 +83,7 @@ namespace Love_Bot.Sites {
             //else
             //    return false;
             //if (!buyNow)
-            //    driver.Navigate().GoToUrl(checkouturl);
+            //    GoToUrl(checkouturl);
 
             //IWebElement elem = FindElementTimeout(20, x => driver.FindElementByTagName(x), "fieldset");
             //if (elem != null) {
@@ -98,7 +98,7 @@ namespace Love_Bot.Sites {
             //    }
             //}
             if (!buyNow) {
-                driver.Navigate().GoToUrl(checkoutUrl2);
+                GoToUrl(checkoutUrl2);
             }
             
             buyNow = false;
@@ -117,7 +117,7 @@ namespace Love_Bot.Sites {
 
         protected override bool Login(string email, string password) {
             log.Information("logging to amazon");
-            driver.Navigate().GoToUrl(loginUrl);
+            GoToUrl(loginUrl);
 
             IWebElement elem = FindElementTimeout(10, x => driver.FindElementById(x), "nav-link-accountList-nav-line-1");
             if (elem is null)
@@ -232,7 +232,7 @@ namespace Love_Bot.Sites {
             log.Information("checking amazon");
             buyNow = false;
             AddToCartButton = null;
-            driver.Navigate().GoToUrl(url);
+            GoToUrl(url);
             Product product = new Product();
             product.link = url;
 

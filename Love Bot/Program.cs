@@ -32,8 +32,6 @@ namespace Love_Bot {
         }
 
         private static void Main(string[] args) {
-            CreateHostBuilder(args).Build().Run();
-            return;
 
             log = new LoggerConfiguration()
                 .MinimumLevel.Debug()
@@ -70,11 +68,6 @@ namespace Love_Bot {
 
             new Thread(() => CheckConfigs(args[0])).Start();
         }
-
-        public static IHostBuilder CreateHostBuilder(string[] args) =>
-            Host.CreateDefaultBuilder(args).ConfigureWebHostDefaults(webBuilder => {
-                webBuilder.UseStartup<LoveBot.Startup>();
-            });
 
 
         private static void CreateBotThread(string name, Website site) {

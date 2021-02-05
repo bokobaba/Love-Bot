@@ -38,7 +38,7 @@ namespace Love_Bot.Sites {
             log.Information("adding product to Bestbuy cart");
 
             if (refresh) {
-                driver.Navigate().GoToUrl(url);
+                GoToUrl(url);
                 AddToCartButton = FindElementTimeout(5, x => driver.FindElementByXPath(x), itemButtonXpath);
             }
             if (AddToCartButton is null) return false;
@@ -52,7 +52,7 @@ namespace Love_Bot.Sites {
         protected override bool Checkout() {
             log.Information("checkout Bestbuy");
 
-            driver.Navigate().GoToUrl(cartUrl);
+            GoToUrl(cartUrl);
 
             log.Information("searching for shipping radio");
             IWebElement elem = FindElementTimeout(5, x => driver.FindElementByXPath(x), "//input[contains(@id, 'shipping')]");
@@ -93,7 +93,7 @@ namespace Love_Bot.Sites {
         protected override bool Login(string email, string password) {
             log.Information("logging in to Bestbuy");
             //Task.Delay(2000).Wait();
-            driver.Navigate().GoToUrl(loginUrl);
+            GoToUrl(loginUrl);
 
             Task.Delay(1000).Wait();
 
@@ -128,7 +128,7 @@ namespace Love_Bot.Sites {
         protected override Product ParseBrowser(string url) {
             log.Information("checking Bestbuy");
             AddToCartButton = null;
-            driver.Navigate().GoToUrl(url);
+            GoToUrl(url);
             Product product = new Product();
             product.link = url;
 

@@ -34,7 +34,7 @@ namespace Love_Bot.Sites {
         protected override bool AddToCart(string url, bool refresh = false) {
             log.Information("adding product to gamestop cart");
             if (AddToCartButton is null) {
-                driver.Navigate().GoToUrl(url);
+                GoToUrl(url);
 
                 IWebElement elem = FindElementTimeout(5, x => driver.FindElementByXPath(x), itemButtonXpath);
                 if (elem is null) return false;
@@ -60,7 +60,7 @@ namespace Love_Bot.Sites {
 
         protected override bool Checkout() {
             log.Information("checkout gamestop");
-            driver.Navigate().GoToUrl(checkouturl);
+            GoToUrl(checkouturl);
             //IWebElement e = FindElementTimeout(5, x => driver.FindElementById(x), "shippingAddressOne");
             //if (e is null) return false;
             //e.SendKeys(Keys.Control + "a");
@@ -128,9 +128,9 @@ namespace Love_Bot.Sites {
 
         protected override bool Login(string email, string password) {
             log.Information("logging into gamestop");
-            driver.Navigate().GoToUrl(logouturl);
+            GoToUrl(logouturl);
             Task.Delay(2000).Wait();
-            driver.Navigate().GoToUrl(loginUrl);
+            GoToUrl(loginUrl);
             IWebElement elem;
 
             elem = FindElementTimeout(5, x => driver.FindElementByXPath(x), "//button[@class='navbar-toggler']");
@@ -174,7 +174,7 @@ namespace Love_Bot.Sites {
         protected override Product ParseBrowser(string url) {
             log.Information("checking gamestop");
             AddToCartButton = null;
-            driver.Navigate().GoToUrl(url);
+            GoToUrl(url);
             Product product = new Product();
             product.link = url;
 
